@@ -1,4 +1,5 @@
 import h5py
+import halos
 import numpy as np
 import glob
 import illustris_python as il
@@ -50,21 +51,18 @@ def load_halos(sim_path, snapshot, sim_type, sim_name=None, header=None):
     if sim_type == 'IllustrisTNG':
         haloes = {}
         haloes_cat = il.groupcat.loadHalos(sim_path, snapshot)
-        haloes['GroupMass'] = haloes_cat['GroupMass'] * 1e10  # Convert to Msun/h
-        haloes['GroupPos'] = haloes_cat['GroupPos']
+        # haloes['GroupMass'] = haloes_cat['GroupMass'] * 1e10  # Convert to Msun/h
+        # haloes['GroupPos'] = haloes_cat['GroupPos']
         haloes['GroupRad'] = haloes_cat['Group_R_TopHat200']
-        
-    elif sim_type == 'SIMBA':
-        if header is None:
-            raise ValueError("Header is required for SIMBA simulations")
-        
-        halo_path = sim_path + 'catalogs/' + sim_name + '_' + str(snapshot) + '.hdf5'
-        haloes = {}
-        with h5py.File(halo_path, 'r') as f:
-            haloes['GroupPos'] = f['halo_data']['pos'][:] * header['HubbleParam']  # kpc/h # type: ignore
-            haloes['GroupMass'] = f['halo_data']['dicts']['masses.total'][:] * header['HubbleParam']  # Msun/h # type: ignore
-            haloes['GroupRad'] = f['halo_data']['dicts']['virial_quantities.r200c'][:] * header['HubbleParam']  # kpc/h # type: ignore
+        sub_h = haloes_cat['GroupFirstSub'][:]
+        central_subhalo_ids = sub_h[np.where(sub_h >= 0)]
 
+        fields = ['SubhaloMass','SubhaloMassInMaxRadType','SubhaloVmaxRad', 'SubhaloMassInMaxRad','SubhaloPos','SubhaloGrNr','SubhaloLen']
+        subhalos = il.groupcat.loadSubhalos(sim_path, snapshot, fields=fields)
+        haloes['SubhaloMass']   = subhalos['SubhaloMass'][central_subhalo_ids] * 1e10   
+        haloes['SubhaloPos'] = subhalos['SubhaloPos'][central_subhalo_ids]
+        haloes['SubhaloGrNr'] = subhalos['SubhaloGrNr'][central_subhalo_ids]
+    
     return haloes
 
 
@@ -140,7 +138,7 @@ def load_subsets(sim_path, snapshot, sim_type, p_type, sim_name=None, feedback=N
     return particles
 
 
-def load_subset(sim_path, snapshot, sim_type, p_type, snap_path, header=None, keys=None, sim_name=None):
+def load_subset(snap_file, p_type, sim_type='IllustrisTNG', header=None, keys=None, sim_name=None):
     """Load a subset of particles from a specific snapshot file.
 
     Args:
@@ -185,7 +183,7 @@ def load_subset(sim_path, snapshot, sim_type, p_type, snap_path, header=None, ke
         raise NotImplementedError('Particle Type not implemented')
 
     particles = {}
-    with h5py.File(snap_path, 'r') as f:
+    with h5py.File(snap_file, 'r') as f:
         file_header = dict(f['Header'].attrs.items())
         for key in read_keys:
             particles[key] = f[p_type_val][key][:] # type: ignore
@@ -200,7 +198,7 @@ def load_subset(sim_path, snapshot, sim_type, p_type, snap_path, header=None, ke
     return particles
 
 
-def _get_data_filepath(sim_type, sim_name, snapshot, feedback, p_type, n_pixels,
+def _get_data_filepath(sim_type, sim_index, p_type, n_pixels,
                        projection='xy', data_type='field', dim='2D',
                        mask=False, maskRad=2.0, base_path=None):
     """Generate the file path for saving/loading data.
@@ -223,7 +221,7 @@ def _get_data_filepath(sim_type, sim_name, snapshot, feedback, p_type, n_pixels,
         Path: Full file path for the data file.
     """
     if base_path is None:
-        base_path = '/pscratch/sd/r/rhliu/simulations/'
+        base_path = '/pscratch/sd/l/lindajin/CAMELS/'
     
     if dim == '3D' and data_type == 'map':
         raise ValueError("3D maps are not supported. Please use 'field' for 3D data.")
@@ -236,37 +234,28 @@ def _get_data_filepath(sim_type, sim_name, snapshot, feedback, p_type, n_pixels,
     # Build filename
     if sim_type == 'IllustrisTNG':
         if dim == '2D':
-            filename = f'{sim_name}_{snapshot}_{p_type}_{n_pixels}_{projection}{suffix}.npy'
+            filename = f'{p_type}_{n_pixels}_{projection}{suffix}.npy'
         else:  # 3D
-            filename = f'{sim_name}_{snapshot}_{p_type}_{n_pixels}{suffix}.npy'
-    elif sim_type == 'SIMBA':
-        if dim == '2D':
-            filename = f'{sim_name}_{feedback}_{snapshot}_{p_type}_{n_pixels}_{projection}{suffix}.npy'
-        else:  # 3D
-            filename = f'{sim_name}_{feedback}_{snapshot}_{p_type}_{n_pixels}{suffix}.npy'
+            filename = f'{p_type}_{n_pixels}{suffix}.npy'
     else:
         raise ValueError(f"Unknown sim_type: {sim_type}")
     
     # Build directory path
-    dir_path = Path(f'{base_path}/{sim_type}/products/{dim}/')
-    if mask:
-        dir_path = dir_path / 'masked'
+    dir_path = Path(f'{base_path}/{sim_type}/L50n512_SB35/SB35_{sim_index}/data/')
+
     
     return dir_path / filename
 
 
-def load_data(sim_type, sim_name, snapshot, feedback, p_type, n_pixels, 
+def load_data(sim_type, sim_index, p_type, n_pixels, 
               projection='xy', data_type='field', dim='2D', 
               mask=False, maskRad=2.0,
               base_path=None):
     """Load a precomputed field or map from file.
 
     Args:
-        sim_path (str): Base path to the simulation.
         sim_type (str): The type of simulation.
-        sim_name (str): Name of the simulation.
-        snapshot (int): Snapshot number.
-        feedback (str): Feedback type (for SIMBA).
+        sim_index (int): Simulation index.
         p_type (str): Particle type.
         n_pixels (int): Number of pixels.
         projection (str): Projection direction.
@@ -279,7 +268,7 @@ def load_data(sim_type, sim_name, snapshot, feedback, p_type, n_pixels,
     Returns:
         np.ndarray: 2D numpy array of the field or map.
     """
-    filepath = _get_data_filepath(sim_type, sim_name, snapshot, feedback, p_type, n_pixels,
+    filepath = _get_data_filepath(sim_type, sim_index, p_type, n_pixels,
                                    projection, data_type, dim, mask, maskRad, base_path)
     
     try:
@@ -290,7 +279,7 @@ def load_data(sim_type, sim_name, snapshot, feedback, p_type, n_pixels,
     return data
 
 
-def save_data(data, sim_type, sim_name, snapshot, feedback, p_type, n_pixels, 
+def save_data(data, sim_type, sim_index, p_type, n_pixels, 
               projection='xy', data_type='field', dim='2D',
               mask=False, maskRad=2.0,
               base_path=None, mkdir=True):
@@ -299,9 +288,7 @@ def save_data(data, sim_type, sim_name, snapshot, feedback, p_type, n_pixels,
     Args:
         data (np.ndarray): 2D array to save.
         sim_type (str): The type of simulation.
-        sim_name (str): Name of the simulation.
-        snapshot (int): Snapshot number.
-        feedback (str): Feedback type (for SIMBA).
+        sim_index (int): Simulation index.
         p_type (str): Particle type.
         n_pixels (int): Number of pixels.
         projection (str): Projection direction.
@@ -314,7 +301,7 @@ def save_data(data, sim_type, sim_name, snapshot, feedback, p_type, n_pixels,
     Returns:
         None
     """
-    filepath = _get_data_filepath(sim_type, sim_name, snapshot, feedback, p_type, n_pixels,
+    filepath = _get_data_filepath(sim_type, sim_index, p_type, n_pixels,
                                    projection, data_type, dim, mask, maskRad, base_path)
     
     if mkdir:

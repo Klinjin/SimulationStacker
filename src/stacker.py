@@ -22,7 +22,7 @@ import glob
 # sys.path.append('../../illustrisPython/')
 import illustris_python as il 
 
-from tools import numba_tsc_3D, hist2d_numba_seq
+# from tools import numba_tsc_3D, hist2d_numba_seq
 from utils import fft_smoothed_map, comoving_to_arcmin
 from halos import select_massive_halos, halo_ind
 from filters import total_mass, delta_sigma, CAP, CAP_from_mass, DSigma_from_mass, delta_sigma_mccarthy, delta_sigma_kernel, delta_sigma_ring
@@ -33,13 +33,11 @@ from mapMaker import create_field, create_masked_field
 class SimulationStacker(object):
 
     def __init__(self, 
-                 sim: str, 
-                 snapshot: int, 
+                 sim_index: int, 
+                 snapshot: int = 74, 
                  nPixels=2000, 
-                 simType='IllustrisTNG', 
-                 feedback=None, # Only for SIMBA
-                 z=0.0):
-        """_summary_
+                 simType='IllustrisTNG'):
+        """DEPRECIATED henry's args for record only
 
         Args:
             sim (str): Simulation Instance, One of ['TNG300-1', 'TNG300-2', 'TNG100-1', 'TNG100-2', 'm50n512', 'm100n1024']
@@ -49,33 +47,33 @@ class SimulationStacker(object):
             feedback (str, optional): feedback types for SIMBA. Defaults to None. One of 
                 ['s50', 's50nox', 's50noagn', 's50nofb', 's50nojet'].
             z (float, optional): Redshift of the snapshot. Defaults to 0.0.
-            
-        TODO:
-            Automatic selection of closest snapshot from redshift specification!
+
+        UPDATED Args:
+            sim_index (int): Simulation index, used to identify the specific simulation instance.
+            snapshot (str, optional): Snapshot number as a string. Defaults to '074'.
         """
-        
+        self.sim_index = sim_index
         self.simType = simType
+        self.snapshot = snapshot
+        self.chunkNum = 0  # loading in Header from chunk 0 only for now.
+
         if self.simType == 'IllustrisTNG':
-            self.simPath = '/pscratch/sd/r/rhliu/simulations/IllustrisTNG/' + sim + '/output/'
-        elif self.simType == 'SIMBA':
-            self.simPath = '/pscratch/sd/r/rhliu/simulations/SIMBA/' + sim + '/' + feedback + '/' # type: ignore
-            assert feedback in ['s50', 's50nox', 's50noagn', 's50nofb', 's50nojet']
+            # these paths are parent folders to data, not full paths to files
+            self.sim_path = f'/pscratch/sd/l/lindajin/CAMELS/IllustrisTNG/L50n512_SB35/SB35_{self.sim_index}'
+            self.snap_path = self.sim_path + '/snapdir_' + str(snapshot).zfill(3) + '/'
+            self.catalog_path = self.sim_path + '/groups_' + str(snapshot).zfill(3) + '/'
+
         else:
             raise NotImplementedError('Simulation type not implemented')
 
-        self.sim = sim
-        self.snapshot = snapshot
         self.nPixels = nPixels
-        self.feedback = feedback
-        self.z = z
-        
-        # with h5py.File(il.snapshot.snapPath(self.simPath, self.snapshot), 'r') as f:
-        with h5py.File(self.snapPath(self.simType), 'r') as f:
-        
+
+        with h5py.File(self.snap_path + 'snap_'+ str(snapshot).zfill(3) + f'.{self.chunkNum}.hdf5', 'r') as f:
             self.header = dict(f['Header'].attrs.items())
         
         # self.Lbox = self.header['BoxSize'] # kpc/h
         self.h = self.header['HubbleParam'] # Hubble parameter
+        self.z = self.header['Redshift'] if self.simType == 'IllustrisTNG' else 0.47
 
         # Define cosmology
         self.cosmo = FlatLambdaCDM(H0=100 * self.header['HubbleParam'], Om0=self.header['Omega0'], Tcmb0=2.7255 * u.K)
@@ -124,7 +122,7 @@ class SimulationStacker(object):
             haloes = self.loadHalos(self.simType)
             haloMass = haloes['GroupMass']
             
-            halo_mask = select_massive_halos(haloMass, 10**(13.22), 5e14) # TODO: make this configurable from user input
+            halo_mask, mass_threshold = select_massive_halos(haloMass, 10**(13.22), 5e14) # TODO: make this configurable from user input
             haloes['GroupMass'] = haloes['GroupMass'][halo_mask]
             haloes['GroupRad'] = haloes['GroupRad'][halo_mask] * maskRad # in kpc/h
             haloes['GroupPos'] = haloes['GroupPos'][halo_mask]
@@ -136,9 +134,8 @@ class SimulationStacker(object):
         
         if save:
             # TODO: Handle saving and loading of the fields for the masked case.
-            save_data(field, self.simType, self.sim, self.snapshot, 
-                      self.feedback, pType, nPixels, projection, 'field', 
-                      mask=mask, maskRad=maskRad, base_path=base_path)
+            save_data(field, self.simType, self.sim_index, pType, nPixels, 
+                      projection, 'field', mask=mask, maskRad=maskRad, base_path=base_path)
 
         return field
 
@@ -205,9 +202,8 @@ class SimulationStacker(object):
             map_ = fft_smoothed_map(map_, beamsize, pixel_size_arcmin=arcminPerPixel)
 
         if save:
-            save_data(map_, self.simType, self.sim, self.snapshot, 
-                      self.feedback, pType, nPixels, projection, 'map', 
-                      mask=mask, maskRad=maskRad, base_path=base_path)
+            save_data(map_, self.simType, self.sim_index, pType, nPixels, 
+                      projection, 'map', mask=mask, maskRad=maskRad, base_path=base_path)
 
 
         return map_
@@ -266,7 +262,7 @@ class SimulationStacker(object):
 
     def stackMap(self, pType, filterType='cumulative', minRadius=0.5, maxRadius=6.0, numRadii=11,
                  z=None, projection='xy', save=False, load=True, radDistance=1.0, pixelSize=0.5, 
-                 halo_mass_avg=10**(13.22), halo_mass_upper=5*10**(14), mask=False, maskRad=3.0):
+                halo_number_density=2.4e-3, mask=False, maskRad=3.0):
         """Stack the map of a given particle type.
 
         Args:
@@ -312,12 +308,9 @@ class SimulationStacker(object):
             projection=projection,
             radDistance=radDistance,
             radDistanceUnits='arcmin',
-            halo_mass_avg=halo_mass_avg,
-            halo_mass_upper=halo_mass_upper,
-            z=z,
+            halo_number_density=halo_number_density,
             pixelSize=pixelSize
         )
-        
        # Unit Conversion specific to SZ maps:
         T_CMB = 2.7255
         if pType == 'tau':
@@ -410,7 +403,7 @@ class SimulationStacker(object):
 
     def stack_on_array(self, array, filterType='cumulative', minRadius=0.1, maxRadius=4.5, numRadii=25,
                        projection='xy', radDistance=1000.0, radDistanceUnits='kpc/h', 
-                       halo_mass_avg=10**(13.22), halo_mass_upper=5*10**(14), z=None, pixelSize=0.5):
+                       halo_number_density=2.4e-3, pixelSize=0.5):
         """Abstract stacking function that works on any 2D array.
 
         Args:
@@ -435,27 +428,21 @@ class SimulationStacker(object):
         assert array.shape == (nPixels, nPixels), f"Array must be square, got shape: {array.shape}"
 
         # Load the halo catalog and select halos
-        haloes = self.loadHalos(self.simType)
-        haloMass = haloes['GroupMass']
-        haloPos = haloes['GroupPos']
+        haloes = self.loadHalos()
+        haloMass = haloes['SubhaloMass']  # in 1e10 Msun/h
+        haloPos = haloes['SubhaloPos']
+
+        halo_mask, mass_threshold = select_massive_halos(haloMass, self.header['BoxSize'], halo_number_density)
         
-        if halo_mass_avg is None:
-            # Use legacy selection method for backward compatibility
-            mass_min, mass_max, _ = halo_ind(2)
-            halo_mask = np.where(np.logical_and((haloMass > mass_min), (haloMass < mass_max)))[0]
-        else:
-            halo_mask = select_massive_halos(haloMass, halo_mass_avg, halo_mass_upper)
-        
-        print(f'Number of halos selected: {halo_mask.shape[0]}')
-        
+        print(f'Number of halos selected: {halo_mask.shape[0]} at Mass threshold: {mass_threshold: .2e} Msun/h')
+
         # Convert radDistance to pixels based on units
         if radDistanceUnits == 'kpc/h':
             kpcPerPixel = self.header['BoxSize'] / nPixels
             RadPixel = radDistance / kpcPerPixel
             pixelSize_true = kpcPerPixel
         elif radDistanceUnits == 'arcmin':
-            if z is None:
-                z = self.z
+            z = self.z
             # Calculate arcmin per pixel
             cosmo = FlatLambdaCDM(H0=100 * self.header['HubbleParam'], Om0=self.header['Omega0'], Tcmb0=2.7255 * u.K)
             # dA = cosmo.angular_diameter_distance(z).to(u.kpc).value
@@ -548,16 +535,6 @@ class SimulationStacker(object):
             
         profiles = np.array(profiles).T
 
-        # if filterType == 'CAP':
-        #     # Post-process CAP profiles to convert to physical units
-        #     radii_CAP = np.linspace(minRadius, maxRadius, 25)
-        #     cap_profiles = CAP_from_mass(radii_CAP, radii, profiles.mean(axis=1))
-        #     return radii_CAP, cap_profiles
-        # if filterType == 'DSigma':
-        #     # Post-process DSigma profiles to convert to physical units
-        #     # radii_DSigma = np.linspace(minRadius, maxRadius, 9)
-        #     dsigma_profiles = DSigma_from_mass(radii, radii, profiles)
-        #     return radii, dsigma_profiles
         
         return radii, profiles
 
@@ -614,37 +591,25 @@ class SimulationStacker(object):
     
     # Some tools for file handling and loading:
 
-    def snapPath(self, simType, chunkNum=0, pathOnly=False):
-        """Get the snapshot path for the given simulation type."""
-        return snap_path(self.simPath, self.snapshot, simType, 
-                        sim_name=self.sim, feedback=self.feedback, 
-                        chunk_num=chunkNum, path_only=pathOnly)
-
-    def loadHalos(self, simType):
+    def loadHalos(self):
         """Load halo data for the specified simulation type."""
-        return load_halos(self.simPath, self.snapshot, simType, 
-                         sim_name=self.sim, header=self.header)
+        return load_halos(self.sim_path, self.snapshot, self.simType, 
+                     header=self.header)
 
     def loadSubsets(self, pType, keys=None):
         """Load particle subsets for the specified particle type."""
         return load_subsets(self.simPath, self.snapshot, self.simType, pType,
-                           sim_name=self.sim, feedback=self.feedback, header=self.header, keys=keys)
+                          header=self.header, keys=keys)
 
-    def loadSubset(self, pType, snapPath, keys=None):
+    def loadSubset(self, pType, keys=None):
         """Load a subset of particles from the snapshot."""
-        return load_subset(self.simPath, self.snapshot, self.simType, pType, snapPath,
-                          header=self.header, keys=keys, sim_name=self.sim)
+        return load_subset(self.snap_Path, pType, 
+                          header=self.header, keys=keys)
 
     def loadData(self, pType, nPixels=None, projection='xy', type='field', 
                  mask=False, maskRad=3.0, base_path=None):
         """Load a precomputed field or map from file."""
         if nPixels is None:
             nPixels = self.nPixels
-        return load_data(self.simType, self.sim, self.snapshot, 
-                         self.feedback, pType, nPixels, projection, type, 
-                         mask=mask, maskRad=maskRad, base_path=base_path)
-
-
-
-if __name__ == "__main__":
-    pass
+        return load_data(self.simType, self.sim_index, pType, nPixels, 
+                         projection, type, mask=mask, maskRad=maskRad, base_path=base_path)

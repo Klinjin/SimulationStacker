@@ -1,7 +1,7 @@
 # sys.path.append('../../illustrisPython/')
 import illustris_python as il 
 
-from tools import numba_tsc_3D, hist2d_numba_seq
+# from tools import numba_tsc_3D, hist2d_numba_seq
 # from stacker import SimulationStacker
 from utils import fft_smoothed_map
 from halos import select_massive_halos, halo_ind
@@ -364,7 +364,7 @@ def make_sz_field(stacker, pType, nPixels=None, projection='xy', dim='2D'):
     # Now we compute the SZ fields iteratively, iterating over every snapshot chunk: (Note SIMBA only has one chunk)
     
     # Get chunks:        
-    folderPath = stacker.snapPath(stacker.simType, pathOnly=True)
+    folderPath = stacker.snap_path
     if stacker.simType == 'IllustrisTNG':
         snaps = glob.glob(folderPath + 'snap_*.hdf5') # TODO: fix this for SIMBA (done I think)
     elif stacker.simType == 'SIMBA':
@@ -388,8 +388,7 @@ def make_sz_field(stacker, pType, nPixels=None, projection='xy', dim='2D'):
     for i, snap in enumerate(snaps):
 
         # particles = stacker.loadSubset(pType, snapPath=snap, keys=['Coordinates', 'Masses', 'ElectronAbundance', 'InternalEnergy', 'Density', 'Velocities'])
-        particles = load_subset(stacker.simPath, stacker.snapshot, stacker.simType, pType, 
-                                snap_path=snap, header=stacker.header, sim_name=stacker.sim,
+        particles = load_subset(snap, pType, header=stacker.header, sim_name=stacker.simType,
                                 keys=['Coordinates', 'Masses', 'ElectronAbundance', 'InternalEnergy', 'Density', 'Velocities'])
 
         Co = particles['Coordinates']
@@ -458,8 +457,7 @@ def make_sz_field(stacker, pType, nPixels=None, projection='xy', dim='2D'):
             else:
                 raise ValueError('Particle type not recognized: ' + pType)
 
-        if i % 10 == 0:
-            print(f'Processed {i} snapshots, time elapsed: {time.time() - t0:.2f} seconds')
+        print(f'Processed {i} snapshots, time elapsed: {time.time() - t0:.2f} seconds')
     
     
     print('hist2d time:', time.time() - t0)
@@ -492,7 +490,7 @@ def make_mass_field(stacker, pType, nPixels=None, projection='xy', dim='2D'):
     
     # Get all particle snap chunks:
 
-    folderPath = stacker.snapPath(stacker.simType, pathOnly=True)
+    folderPath = stacker.snap_path
     if stacker.simType == 'IllustrisTNG':
         snaps = glob.glob(folderPath + 'snap_*.hdf5') # TODO: fix this for SIMBA (done I think)
     elif stacker.simType == 'SIMBA':
@@ -515,8 +513,7 @@ def make_mass_field(stacker, pType, nPixels=None, projection='xy', dim='2D'):
     t0 = time.time()
     for i, snap in enumerate(snaps):
         # particles = stacker.loadSubset(pType, snapPath=snap)
-        particles = load_subset(stacker.simPath, stacker.snapshot, stacker.simType, pType, 
-                                snap_path=snap, header=stacker.header, sim_name=stacker.sim)
+        particles = load_subset(snap, pType, header=stacker.header, sim_name=stacker.simType)
         coordinates = particles['Coordinates'] # kpc/h
         masses = particles['Masses']  * 1e10 / stacker.header['HubbleParam'] # Msun/h
         
@@ -613,8 +610,8 @@ def create_masked_field(stacker, pType, nPixels, halo_cat, projection='xy',
     
     if load3D:
         try:
-            field_3D = load_data(stacker.simType, stacker.sim, stacker.snapshot, stacker.feedback,
-                                 pType, nPixels, projection, data_type='field', dim='3D', base_path=base_path)
+            field_3D = load_data(stacker.simType, stacker.sim_index, pType, nPixels, 
+                                 projection, data_type='field', dim='3D', base_path=base_path)
             save3D = False # No need to save if we loaded
             print('Loaded 3D field successfully.')
         except ValueError as e:
@@ -626,8 +623,8 @@ def create_masked_field(stacker, pType, nPixels, halo_cat, projection='xy',
 
 
     if save3D:
-        save_data(field_3D, stacker.simType, stacker.sim, stacker.snapshot, stacker.feedback,
-                   pType, nPixels, projection, data_type='field', dim='3D', base_path=base_path)
+        save_data(field_3D, stacker.simType, stacker.sim_index, pType, nPixels, 
+                  projection, data_type='field', dim='3D', base_path=base_path)
 
     # sz_types = ['tSZ', 'kSZ', 'tau']
     

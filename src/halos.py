@@ -10,24 +10,30 @@ def halo_ind(ind):
     else:
         raise ValueError("Wrong ind")
 
-def select_massive_halos(halo_masses, target_average_mass, upper_mass_bound=None):
+
+def select_massive_halos(halo_masses, Boxsize, number_density, upper_mass_bound=None):
     halo_masses = np.asarray(halo_masses)
+    
+    # Apply upper mass bound filter
     if upper_mass_bound is not None:
         valid_mask = halo_masses <= upper_mass_bound
         filtered = halo_masses[valid_mask]
+        valid_indices = np.where(valid_mask)[0]
     else:
-        valid_mask = np.ones_like(halo_masses, dtype=bool)
         filtered = halo_masses
+        valid_indices = np.arange(len(halo_masses))
 
-    order = np.argsort(filtered)[::-1]
-    sorted_m = filtered[order]
-    cum_sum = np.cumsum(sorted_m)
-    counts = np.arange(1, len(sorted_m) + 1)
-    cum_avg = cum_sum / counts
-
-    idx = np.searchsorted(cum_avg[::-1], target_average_mass, side='right')
-    if idx == 0:
-        raise ValueError("No subset of halos meets the target average mass.")
-    cutoff = len(sorted_m) - idx
-    selected = order[:cutoff]
-    return np.where(valid_mask)[0][selected]
+    # Calculate mass threshold based on number density
+    target_count = int(number_density * (Boxsize/1e3)**3)
+    target_count = min(target_count, len(filtered))
+    
+    if target_count == 0:
+        return np.array([], dtype=int)
+    
+    # Find mass threshold
+    mass_threshold = np.partition(filtered, -target_count)[-target_count]
+    
+    # Select halos above mass threshold
+    mass_condition = filtered >= mass_threshold
+    
+    return valid_indices[mass_condition], mass_threshold
