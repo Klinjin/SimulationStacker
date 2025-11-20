@@ -35,5 +35,6 @@ def select_massive_halos(halo_masses, Boxsize, number_density, upper_mass_bound=
     
     # Select halos above mass threshold
     mass_condition = filtered >= mass_threshold
+
     
-    return valid_indices[mass_condition], mass_threshold
+    return valid_indices[mass_condition], [mass_threshold, filtered[mass_condition].max()]

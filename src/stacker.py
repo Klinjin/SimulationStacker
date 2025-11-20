@@ -433,8 +433,9 @@ class SimulationStacker(object):
         haloPos = haloes['SubhaloPos']
 
         halo_mask, mass_threshold = select_massive_halos(haloMass, self.header['BoxSize'], halo_number_density)
-        
-        print(f'Number of halos selected: {halo_mask.shape[0]} at Mass threshold: {mass_threshold: .2e} Msun/h')
+        self.mass_threshold = mass_threshold  # Store for reference
+
+        print(f'Number of halos selected: {halo_mask.shape[0]} at Mass threshold: {mass_threshold[0]: .2e} ~ {mass_threshold[1]: .2e} Msun/h')
 
         # Convert radDistance to pixels based on units
         if radDistanceUnits == 'kpc/h':
