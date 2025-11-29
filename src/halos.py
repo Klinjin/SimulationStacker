@@ -28,7 +28,8 @@ def select_massive_halos(halo_masses, Boxsize, number_density, upper_mass_bound=
     target_count = min(target_count, len(filtered))
     
     if target_count == 0:
-        return np.array([], dtype=int)
+        # Return empty indices and empty masses for consistency
+        return np.array([], dtype=int), np.array([], dtype=halo_masses.dtype)
     
     # Find mass threshold
     mass_threshold = np.partition(filtered, -target_count)[-target_count]
@@ -37,4 +38,38 @@ def select_massive_halos(halo_masses, Boxsize, number_density, upper_mass_bound=
     mass_condition = filtered >= mass_threshold
 
     
-    return valid_indices[mass_condition], [mass_threshold, filtered[mass_condition].max()]
+    return valid_indices[mass_condition], filtered[mass_condition]
+
+
+def filter_edge_halo(haloPos, Boxsize, maxRadius):
+    """Check if a single halo is too close to box edges for CAP filter.
+
+    Returns True if the halo should be filtered out (too close to edge),
+    False if the halo is valid (far enough from edges).
+
+    Parameters:
+    - haloPos: array-like of shape (2,) or (3,); single halo position in pixels.
+               Only the first two components (x, y) are used.
+    - Boxsize: float or int; box size in pixels (assumed square box).
+    - maxRadius: float; maximum CAP radius in pixels.
+
+    Returns:
+    - bool: True if halo should be filtered out, False if halo is valid.
+    """
+    pos = np.asarray(haloPos)
+    if pos.ndim != 1:
+        raise ValueError("haloPos must be a 1D array for a single halo")
+    
+    if pos.shape[0] < 2:
+        raise ValueError("haloPos must have at least two coordinates (x,y)")
+    
+    x, y = pos[0], pos[1]
+    margin = float(maxRadius)
+
+    # Filter out if within margin of any edge
+    too_close_x = (x < margin) or (x > float(Boxsize) - margin)
+    too_close_y = (y < margin) or (y > float(Boxsize) - margin)
+    
+    return too_close_x or too_close_y
+
+

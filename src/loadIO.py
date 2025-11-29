@@ -180,7 +180,7 @@ def load_subset(snap_file, p_type, sim_type='IllustrisTNG', header=None, keys=No
     elif actual_p_type == 'BH':
         p_type_val = 'PartType5'
     else:
-        raise NotImplementedError('Particle Type not implemented')
+        raise NotImplementedError(f'Particle Type not implemented: {actual_p_type}')
 
     particles = {}
     with h5py.File(snap_file, 'r') as f:
@@ -200,7 +200,7 @@ def load_subset(snap_file, p_type, sim_type='IllustrisTNG', header=None, keys=No
 
 def _get_data_filepath(sim_type, sim_index, p_type, n_pixels,
                        projection='xy', data_type='field', dim='2D',
-                       mask=False, maskRad=2.0, base_path=None):
+                       mask=False, maskRad=2.0, base_path=None, file_type='npy'):
     """Generate the file path for saving/loading data.
 
     Args:
@@ -227,16 +227,16 @@ def _get_data_filepath(sim_type, sim_index, p_type, n_pixels,
         raise ValueError("3D maps are not supported. Please use 'field' for 3D data.")
     
     # Build suffix
-    suffix = '_map' if data_type == 'map' else ''
+    suffix = f'_{dim}map' if data_type == 'map' else f'_{dim}field'
     if mask:
         suffix += f'_masked{maskRad}R200c'
     
     # Build filename
     if sim_type == 'IllustrisTNG':
         if dim == '2D':
-            filename = f'{p_type}_{n_pixels}_{projection}{suffix}.npy'
+            filename = f'{p_type}_{n_pixels}_{projection}{suffix}.{file_type}'
         else:  # 3D
-            filename = f'{p_type}_{n_pixels}{suffix}.npy'
+            filename = f'{p_type}_{n_pixels}{suffix}.{file_type}'
     else:
         raise ValueError(f"Unknown sim_type: {sim_type}")
     
@@ -282,11 +282,11 @@ def load_data(sim_type, sim_index, p_type, n_pixels,
 def save_data(data, sim_type, sim_index, p_type, n_pixels, 
               projection='xy', data_type='field', dim='2D',
               mask=False, maskRad=2.0,
-              base_path=None, mkdir=True):
+              base_path=None, mkdir=True, file_type='npy'):
     """Save a field or map to file.
 
     Args:
-        data (np.ndarray): 2D array to save.
+        data (np.ndarray): 2D array to save OR a tuple of arrays for npz.
         sim_type (str): The type of simulation.
         sim_index (int): Simulation index.
         p_type (str): Particle type.
@@ -302,11 +302,21 @@ def save_data(data, sim_type, sim_index, p_type, n_pixels,
         None
     """
     filepath = _get_data_filepath(sim_type, sim_index, p_type, n_pixels,
-                                   projection, data_type, dim, mask, maskRad, base_path)
+                                   projection, data_type, dim, mask, maskRad, base_path, file_type)
     
     if mkdir:
         filepath.parent.mkdir(parents=True, exist_ok=True)
     
     print('Saving data to:', filepath)
-    np.save(filepath, data)
+    if file_type == 'npz':
+        # Support dicts and sequences for multi-array saving
+        if isinstance(data, dict):
+            np.savez(filepath, **data)
+        elif isinstance(data, (list, tuple)):
+            np.savez(filepath, *data)
+        else:
+            # Save single array under key 'arr_0' by default
+            np.savez(filepath, data=data)
+    else:
+        np.save(filepath, data)
 

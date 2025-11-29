@@ -45,6 +45,7 @@ import illustris_python as il # type: ignore
 import yaml
 import argparse
 from pathlib import Path
+from datetime import datetime
 
 def main(path2config, verbose=True):
     """Main function to process the simulation maps.
@@ -69,10 +70,14 @@ def main(path2config, verbose=True):
     pType = config['particle_type']
     projection = config.get('projection', 'xy')
     maskRad = config.get('mask_radii', 1.0) # in units of R200c
+
+    nPixels = config.get('n_pixels', 4)
     
     # fractionType = config['fraction_type']
+    now = datetime.now()
+    dt_string = now.strftime("%m-%d")
 
-    figPath = Path(config['fig_path'])
+    figPath = Path(config.get('fig_path')) / dt_string
     figPath.mkdir(parents=False, exist_ok=True)
     
     figName = config['fig_name']
@@ -139,10 +144,10 @@ def main(path2config, verbose=True):
                                                 simType=sim_type_name)
 
                     # if sim_name == 'TNG300-1':
-                    particles0 = stacker.makeField('gas', nPixels=10)
+                    particles0 = stacker.makeField('gas', nPixels=nPixels)
                     # particles1 = stacker.makeField('DM')
-                    particles4 = stacker.makeField('Stars', nPixels=10)
-                    particles5 = stacker.makeField('BH', nPixels=10)
+                    particles4 = stacker.makeField('Stars', nPixels=nPixels)
+                    particles5 = stacker.makeField('BH', nPixels=nPixels)
                     # else:
                     #     particles0 = stacker.loadSubsets('gas')
                     #     # particles1 = stacker.loadSubsets('DM')
@@ -173,10 +178,10 @@ def main(path2config, verbose=True):
                                                 simType=sim_type_name,
                                                 feedback=feedback)
                     
-                    particles0 = stacker.makeField('gas', nPixels=10)
+                    particles0 = stacker.makeField('gas', nPixels=nPixels)
                     # particles1 = stacker.makeField('DM')
-                    particles4 = stacker.makeField('Stars', nPixels=10)
-                    particles5 = stacker.makeField('BH', nPixels=10)
+                    particles4 = stacker.makeField('Stars', nPixels=nPixels)
+                    particles5 = stacker.makeField('BH', nPixels=nPixels)
                     
                     # particles0 = stacker.loadSubsets('gas')
                     # # particles1 = stacker.loadSubsets('DM')

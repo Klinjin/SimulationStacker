@@ -1,23 +1,25 @@
 stack:
-  redshift: 0.5
-  filter_type: 'DSigma' # Options: 'CAP', 'cumulative', 'DSigma
+  redshift: 0.0
+  filter_type: 'cumulative' # Options: 'CAP', 'cumulative', 'DSigma'
   load_field: true
   save_field: true
   rad_distance: 1.0 # in arcmin
   mask_haloes: false
   mask_radii: 3.0 # Number of virial radii to mask out for haloes. In units of R200c
-  particle_type: 'tau'
+  particle_type: 'gas'
   projection: 'yz' # 'xy', 'xz', 'yz'
   pixel_size: 0.5 # in arcmin
-  filter_type_2: 'DSigma' # Options: 'CAP', 'cumulative', 'DSigma
+  filter_type_2: 'cumulative' # Options: 'CAP', 'cumulative', 'DSigma'
   particle_type_2: 'total'
+  subtract_mean: false
+
 
 plot:
   plot_data: false
   data_path: '../data/Fig1_Fig8_dr10_allfoot_perbin_dr6_pzbin1.npz'
   data_label: 'Hadzhiyska 2024 pz1'
   fig_path: '../figures/2025-11/'
-  fig_name: 'ratio_yz'
+  fig_name: 'ratios_yz'
   fig_type: 'png'
   plot_error_bars: true
 
@@ -29,25 +31,29 @@ simulations:
         snapshot: 125
         feedback: 's50'
       - name: 'm50n512'
-        snapshot: 125
+        snapshot: 151
         feedback: 's50noagn'
       - name: 'm50n512'
-        snapshot: 125
+        snapshot: 151
         feedback: 's50nox'
       - name: 'm50n512'
-        snapshot: 125
+        snapshot: 151
         feedback: 's50nojet'
       - name: 'm50n512'
-        snapshot: 125
+        snapshot: 151
         feedback: 's50nofb'
       - name: 'm100n1024'
-        snapshot: 125
+        snapshot: 151
         feedback: 's50'
   - sim_type: 'IllustrisTNG'
     sims:
       - name: 'TNG100-1'
-        snapshot: 67
+        snapshot: 99
+      # - name: 'TNG300-1'
+      #   snapshot: 99
       - name: 'TNG300-2'
-        snapshot: 67
-      - name: 'Illustris-2'
-        snapshot: 103
+        snapshot: 99
+      - name: 'Illustris-1'
+        snapshot: 135
+      # - name: 'Illustris-2'
+      #   snapshot: 135

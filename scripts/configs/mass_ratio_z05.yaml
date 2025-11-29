@@ -1,6 +1,6 @@
 stack:
   redshift: 0.5
-  filter_type: 'CAP' # Options: 'CAP', 'cumulative', 'DSigma
+  filter_type: 'cumulative' # Options: 'CAP', 'cumulative', 'DSigma'
   load_field: true
   save_field: true
   rad_distance: 1.0 # in arcmin
@@ -9,16 +9,17 @@ stack:
   particle_type: 'gas'
   projection: 'yz' # 'xy', 'xz', 'yz'
   pixel_size: 0.5 # in arcmin
-  filter_type_2: 'DSigma' # Options: 'CAP', 'cumulative', 'DSigma
+  filter_type_2: 'cumulative' # Options: 'CAP', 'cumulative', 'DSigma'
   particle_type_2: 'total'
+  subtract_mean: false
 
 
 plot:
   plot_data: false
   data_path: '../data/Fig1_Fig8_dr10_allfoot_perbin_dr6_pzbin1.npz'
   data_label: 'Hadzhiyska 2024 pz1'
-  fig_path: '../figures/2025-10/10-22/'
-  fig_name: 'profiles_yz'
+  fig_path: '../figures/2025-11/'
+  fig_name: 'ratios_yz'
   fig_type: 'png'
   plot_error_bars: true
 
@@ -48,7 +49,13 @@ simulations:
     sims:
       - name: 'TNG100-1'
         snapshot: 67
+      - name: 'TNG300-1'
+        snapshot: 67
       - name: 'TNG300-2'
         snapshot: 67
+      # - name: 'TNG50-3'
+      #   snapshot: 67
+      - name: 'Illustris-1'
+        snapshot: 103
       - name: 'Illustris-2'
         snapshot: 103

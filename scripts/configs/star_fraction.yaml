@@ -1,4 +1,4 @@
-redshift: 0.5
+redshift: 0.0
 filter_type: 'CAP' # Options: 'CAP', 'cumulative', 'DSigma
 # filter_type: 'cumulative' # Options: 'CAP', 'cumulative', 'DSigma
 load_field: false
@@ -6,14 +6,14 @@ save_field: false
 rad_distance: 1.0 # in arcmin
 mask_radii: 2.0 # Number of virial radii to mask out for haloes. In units of R200c
 
-load: true
+load: false
 load_path: '../figures/2025-09/star_fraction_z0.5_star_fraction.yaml'
 
 plot_data: false
 data_path: '../data/Fig1_Fig8_dr10_allfoot_perbin_dr6_pzbin1.npz'
 data_label: 'Hadzhiyska 2024 pz1'
 
-fig_path: '../figures/2025-09/'
+fig_path: '../figures/2025-11/'
 fig_name: 'star_fraction'
 fig_type: 'png'
 plot_error_bars: true
@@ -27,6 +27,40 @@ particle_type: 'tau'
 projection: 'yz' # 'xy', 'xz', 'yz'
 
 
+# simulations:
+#   - sim_type: 'SIMBA'
+#     sims:
+#       - name: 'm50n512'
+#         snapshot: 125
+#         feedback: 's50'
+#       - name: 'm50n512'
+#         snapshot: 125
+#         feedback: 's50noagn'
+#       - name: 'm50n512'
+#         snapshot: 125
+#         feedback: 's50nox'
+#       - name: 'm50n512'
+#         snapshot: 125
+#         feedback: 's50nojet'
+#       - name: 'm50n512'
+#         snapshot: 125
+#         feedback: 's50nofb'
+#       - name: 'm100n1024'
+#         snapshot: 125
+#         feedback: 's50'
+#   - sim_type: 'IllustrisTNG'
+#     sims:
+#       - name: 'TNG100-1'
+#         snapshot: 67
+#       - name: 'TNG300-1'
+#         snapshot: 67
+#       - name: 'TNG300-2'
+#         snapshot: 67
+#       - name: 'Illustris-1'
+#         snapshot: 103
+#       - name: 'Illustris-2'
+#         snapshot: 103
+
 simulations:
   - sim_type: 'SIMBA'
     sims:
@@ -34,29 +68,29 @@ simulations:
         snapshot: 125
         feedback: 's50'
       - name: 'm50n512'
-        snapshot: 125
+        snapshot: 151
         feedback: 's50noagn'
       - name: 'm50n512'
-        snapshot: 125
+        snapshot: 151
         feedback: 's50nox'
       - name: 'm50n512'
-        snapshot: 125
+        snapshot: 151
         feedback: 's50nojet'
       - name: 'm50n512'
-        snapshot: 125
+        snapshot: 151
         feedback: 's50nofb'
       - name: 'm100n1024'
-        snapshot: 125
+        snapshot: 151
         feedback: 's50'
   - sim_type: 'IllustrisTNG'
     sims:
       - name: 'TNG100-1'
-        snapshot: 67
-      - name: 'TNG300-1'
-        snapshot: 67
+        snapshot: 99
+      # - name: 'TNG300-1'
+      #   snapshot: 99
       - name: 'TNG300-2'
-        snapshot: 67
+        snapshot: 99
       - name: 'Illustris-1'
-        snapshot: 103
-      - name: 'Illustris-2'
-        snapshot: 103
+        snapshot: 135
+      # - name: 'Illustris-2'
+      #   snapshot: 135

@@ -31,6 +31,7 @@ import illustris_python as il # type: ignore
 import yaml
 import argparse
 from pathlib import Path
+from datetime import datetime
 
 
 # --- NEW: set default font to Computer Modern (with fallbacks) and increase tick fontsize ---
@@ -89,7 +90,11 @@ def main(path2config, verbose=True):
     # fractionType = config['fraction_type']
 
     # Plotting parameters
-    figPath = Path(plot_config.get('fig_path'))
+    # get the datetime for file naming
+    now = datetime.now()
+    dt_string = now.strftime("%m-%d")
+
+    figPath = Path(plot_config.get('fig_path')) / dt_string
     figPath.mkdir(parents=False, exist_ok=True)
     plotErrorBars = plot_config.get('plot_error_bars', True)
     figName = plot_config.get('fig_name', 'default_figure')

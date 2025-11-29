@@ -24,6 +24,8 @@ sys.path.append('../src/')
 # from filter_utils import *
 # from SZstacker import SZMapStacker # type: ignore
 from stacker import SimulationStacker
+from utils import arcmin_to_comoving, comoving_to_arcmin
+from halos import select_massive_halos
 
 sys.path.append('../../illustrisPython/')
 import illustris_python as il # type: ignore
@@ -154,6 +156,16 @@ def main(path2config, verbose=True):
 
                     try:
                         OmegaBaryon = stacker.header['OmegaBaryon']
+                        # Use IllustrisTNG cosmology for plot later.
+                        cosmo = FlatLambdaCDM(H0=100 * stacker.header['HubbleParam'], Om0=stacker.header['Omega0'], Tcmb0=2.7255 * u.K, Ob0=OmegaBaryon)
+                        
+                        haloes = stacker.loadHalos(stacker.simType)
+                        haloMass = haloes['GroupMass']
+                        
+                        halo_mask = select_massive_halos(haloMass, 10**(13.22), 5e14) # TODO: make this configurable from user input
+                        haloes['GroupMass'] = haloes['GroupMass'][halo_mask]
+                        haloes['GroupRad'] = haloes['GroupRad'][halo_mask] # in kpc/h
+                        R200C = np.mean(haloes['GroupRad']) # in kpc / h
                     except KeyError:
                         OmegaBaryon = 0.0456  # Default value for Illustris-1
 
@@ -209,10 +221,20 @@ def main(path2config, verbose=True):
     T_CMB = 2.7255
     v_c = 300000 / 299792458
     k = 1 / (T_CMB * v_c * 1e6)
+
+    def forward_arcmin(arcmin):
+        return arcmin_to_comoving(arcmin, redshift, cosmo)
+    def inverse_arcmin(comoving):
+        return comoving_to_arcmin(comoving, redshift, cosmo)
+
     
     for row_idx in range(2):
         for col_idx in range(4):
             ax = axes[row_idx, col_idx]
+            
+            if col_idx != 3:
+                R200C_arcmin = comoving_to_arcmin(R200C * u.kpc / u.h, redshift, cosmo)
+                ax.axvline(R200C_arcmin * (col_idx + 1), color='k', linestyle='--', lw=1)
             
             # Set x-label only on bottom row
             if row_idx == 1:
@@ -222,6 +244,13 @@ def main(path2config, verbose=True):
             if col_idx == 0:
                 ax.set_ylabel(r'Compton-$y$ [$\rm{arcmin}^2$]')
                 # ax.set_ylabel(r'$T_{kSZ}$ [$\mu K \rm{arcmin}^2$]')
+
+            # Set secondary x-axis on top row
+            if row_idx == 0:
+                secax_x = ax.secondary_xaxis('top',
+                                             functions=(forward_arcmin,
+                                                       inverse_arcmin))
+                secax_x.set_xlabel('R [kpc/h]')
             
             # Set secondary y-axis only on rightmost column
             if col_idx == 3:

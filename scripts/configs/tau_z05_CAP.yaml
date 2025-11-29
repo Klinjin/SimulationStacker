@@ -17,7 +17,7 @@ plot:
   data_path: '../data/Fig2_sim.npz'
   # data_label: 'Hadzhiyska 2024 pz1'
   data_label: 'Hadzhiyska 2024'
-  fig_path: '../figures/2025-10/test3/'
+  fig_path: '../figures/2025-11/'
   fig_name: 'profiles_yz'
   fig_type: 'png'
   plot_error_bars: true

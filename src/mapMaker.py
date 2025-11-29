@@ -13,6 +13,7 @@ import numpy as np
 import glob
 from scipy.stats import binned_statistic_2d
 from abacusnbody.analysis.tsc import tsc_parallel #put it on a grid using tsc interpolation # type: ignore
+import MAS_library as MASL
 
 from mask_utils import get_cutout_mask_3d
 
@@ -296,11 +297,12 @@ def create_field(stacker, pType, nPixels, projection, dim='2D'):
     """
     
     sz_types = ['tSZ', 'kSZ', 'tau']
+    combined_types = ['total', 'baryon']
     
     if pType in sz_types:
         return make_sz_field(stacker, pType, nPixels, projection, dim=dim)
-    elif pType == 'total':
-        return make_total_field(stacker, pType, nPixels, projection, dim=dim)
+    elif pType in combined_types:
+        return make_combined_field(stacker, pType, nPixels, projection, dim=dim)
     else:
         return make_mass_field(stacker, pType, nPixels, projection, dim=dim)
 
@@ -538,7 +540,18 @@ def make_mass_field(stacker, pType, nPixels=None, projection='xy', dim='2D'):
             field_total += field
             
         elif dim == '3D':
-            field_total = tsc_parallel(coordinates, field_total, Lbox, weights=masses)
+            # field_total = tsc_parallel(coordinates, field_total, Lbox, weights=masses)
+            MAS     = 'CIC'  #mass-assigment scheme
+            verbose = False   #print information on progress
+
+            # define 3D density field
+            field = np.zeros((nPixels,nPixels,nPixels), dtype=np.float32)  # use float64 for better precision
+
+            # construct 3D density field
+            MASL.MA(coordinates.astype(np.float32), field, Lbox, MAS, W=masses.astype(np.float32), verbose=verbose)
+
+            # at this point, field contains the effective gas mass in each voxel
+            field_total += field
 
         if i % 10 == 0:
             print(f'Processed {i} snapshots, time elapsed: {time.time() - t0:.2f} seconds')
@@ -547,12 +560,12 @@ def make_mass_field(stacker, pType, nPixels=None, projection='xy', dim='2D'):
 
     return field_total
 
-def make_total_field(stacker, pType, nPixels=None, projection='xy', dim='2D'):
-    """Create a total mass field by summing over all particle types.
+def make_combined_field(stacker, pType, nPixels=None, projection='xy', dim='2D', load=True, base_path=None):
+    """Create a combined mass field by summing over all particle types.
 
     Args:
         stacker (SimulationStacker): The stacker instance.
-        pType (str): The type of particle to use for the map. Either 'total'.
+        pType (str): The type of particle to use for the map. Either 'total' (for all particle types) or 'baryon' (for gas and stars only).
         nPixels (int, optional): The number of pixels in the map. Defaults to stacker.nPixels.
         projection (str, optional): The projection direction ('xy', 'yz', or 'xz'). Defaults to 'xy'.
         dim (str, optional): Dimension of the map ('2D' or '3D'). Defaults to '2D'.
@@ -566,10 +579,13 @@ def make_total_field(stacker, pType, nPixels=None, projection='xy', dim='2D'):
     if nPixels is None:
         nPixels = stacker.nPixels
 
-    if pType != 'total':
-        raise ValueError("pType must be 'total' for make_total_field.")
+    if pType == 'total':
+        particle_types = ['gas', 'DM', 'Stars', 'BH']
+    elif pType == 'baryon':
+        particle_types = ['gas', 'Stars', 'BH']
+    else:
+        raise ValueError("pType must be 'total' or 'baryon' for make_combined_field.")
 
-    particle_types = ['gas', 'DM', 'Stars', 'BH']
     if dim == '2D':
         gridSize = [nPixels, nPixels]
     elif dim == '3D':
@@ -579,13 +595,21 @@ def make_total_field(stacker, pType, nPixels=None, projection='xy', dim='2D'):
     total_field = np.zeros(gridSize)
 
     for pt in particle_types:
-        field = make_mass_field(stacker, pt, nPixels, projection, dim=dim)
+        print("Processing particle type:", pt)
+        if load:
+            try:
+                field = load_data(stacker.simType, stacker.sim_index, pt, nPixels, projection, 'field', 
+                                  mask=False, maskRad=3.0, base_path=base_path, dim=dim)
+            except ValueError as e:
+                print(e)
+                print("Computing the field instead...")
+                field = make_mass_field(stacker, pt, nPixels, projection, dim=dim)
         total_field += field
 
     return total_field
 
 def create_masked_field(stacker, pType, nPixels, halo_cat, projection='xy', 
-                        save3D=False, load3D=False, base_path=None):
+                        save3D=False, load3D=False, base_path=None, dim='2D'):
     """Create a masked field, where objects outside of n radii of the halo catalogue
     is masked out.
 
@@ -598,6 +622,7 @@ def create_masked_field(stacker, pType, nPixels, halo_cat, projection='xy',
         save3D (bool, optional): Whether to save the 3D field. Defaults to False.
         load3D (bool, optional): Whether to load the 3D field. Defaults to False.
         base_path (str, optional): The base path for saving/loading data. Defaults to None.
+        dim (str, optional): Dimension of the map ('2D' or '3D'). Defaults to '2D'.
 
     Raises:
         NotImplementedError: If the projection type is not implemented.
@@ -606,12 +631,16 @@ def create_masked_field(stacker, pType, nPixels, halo_cat, projection='xy',
         np.ndarray: The created masked field data.
     """
     
+    if dim not in ['2D', '3D']:
+        raise ValueError("dim must be either '2D' or '3D': " + dim)
+
     # First make the field:
     
     if load3D:
         try:
             field_3D = load_data(stacker.simType, stacker.sim_index, pType, nPixels, 
-                                 projection, data_type='field', dim='3D', base_path=base_path)
+                                 projection, type='field', mask=False, maskRad=3.0, 
+                                 base_path=base_path, dim='3D')
             save3D = False # No need to save if we loaded
             print('Loaded 3D field successfully.')
         except ValueError as e:
@@ -624,7 +653,7 @@ def create_masked_field(stacker, pType, nPixels, halo_cat, projection='xy',
 
     if save3D:
         save_data(field_3D, stacker.simType, stacker.sim_index, pType, nPixels, 
-                  projection, data_type='field', dim='3D', base_path=base_path)
+                  projection, 'field', mask=False, maskRad=3.0, base_path=base_path, dim='3D')
 
     # sz_types = ['tSZ', 'kSZ', 'tau']
     
@@ -644,6 +673,11 @@ def create_masked_field(stacker, pType, nPixels, halo_cat, projection='xy',
     GroupRad_masked = GroupRad / kpcPerPixel
     cutout_mask = get_cutout_mask_3d(field_3D, GroupPos_masked, GroupRad_masked)
     field_3D_masked = field_3D * cutout_mask
+    
+    if dim == '3D':
+        return field_3D_masked
+    # Project to 2D
+    
     if projection == 'xy':
         field_2D_masked = np.sum(field_3D_masked, axis=2)
     elif projection == 'xz':

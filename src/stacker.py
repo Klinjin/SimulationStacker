@@ -22,12 +22,21 @@ import glob
 # sys.path.append('../../illustrisPython/')
 import illustris_python as il 
 
+sys.path.append('/pscratch/sd/l/lindajin/SimulationStacker/src/')
 # from tools import numba_tsc_3D, hist2d_numba_seq
 from utils import fft_smoothed_map, comoving_to_arcmin
-from halos import select_massive_halos, halo_ind
+from halos import select_massive_halos, halo_ind, filter_edge_halo
 from filters import total_mass, delta_sigma, CAP, CAP_from_mass, DSigma_from_mass, delta_sigma_mccarthy, delta_sigma_kernel, delta_sigma_ring
 from loadIO import snap_path, load_halos, load_subsets, load_subset, load_data, save_data
 from mapMaker import create_field, create_masked_field
+
+try:
+    import Pk_library as PKL
+    import MAS_library as MASL
+    HAS_PK_LIBRARY = True
+except ImportError:
+    HAS_PK_LIBRARY = False
+    print("Warning: Pk_library and MAS_library not available. 3D power spectrum functions will not work.")
 
 
 class SimulationStacker(object):
@@ -67,6 +76,7 @@ class SimulationStacker(object):
             raise NotImplementedError('Simulation type not implemented')
 
         self.nPixels = nPixels
+        self.nPixels_map = None  # to be set when making map
 
         with h5py.File(self.snap_path + 'snap_'+ str(snapshot).zfill(3) + f'.{self.chunkNum}.hdf5', 'r') as f:
             self.header = dict(f['Header'].attrs.items())
@@ -76,15 +86,15 @@ class SimulationStacker(object):
         self.z = self.header['Redshift'] if self.simType == 'IllustrisTNG' else 0.47
 
         # Define cosmology
-        self.cosmo = FlatLambdaCDM(H0=100 * self.header['HubbleParam'], Om0=self.header['Omega0'], Tcmb0=2.7255 * u.K)
+        self.cosmo = FlatLambdaCDM(H0=100 * self.h, Om0=self.header['Omega0'], Tcmb0=2.7255 * u.K, Ob0=self.header['OmegaBaryon'])
         
         # self.kpcPerPixel = self.Lbox / self.nPixels # technically kpc/h per pixel
         self.fields = {}
         self.maps = {}
 
     def makeField(self, pType, nPixels=None, projection='xy', save=False, load=True, 
-                  mask=False, maskRad=3.0, base_path=None):
-        """Uses a histogram binning to make projected 2D fields of a given particle type from the simulation.
+                  mask=False, maskRad=3.0, base_path=None, dim='2D'):
+        """Uses a histogram binning to make projected fields (either 2D or 3D) of a given particle type from the simulation.
 
         Args:
             pType (str): Particle Type. One of 'gas', 'DM', 'Stars', 'BH' for mass maps, 'tSZ', 'kSZ', or 'tau' for SZ maps,
@@ -97,12 +107,13 @@ class SimulationStacker(object):
             maskRad (float, optional): Number of virial radii around each halo to keep unmasked. Only used if mask=True. 
                 Defaults to 3x virial radii.
             base_path (str, optional): Base path for loading/saving data. Defaults to None, which uses the default path.
+            dim (str, optional): Dimension of the field to create. Either '2D' or '3D'. Defaults to '2D'.
 
         Raises:
             NotImplementedError: If field is not one of the ones listed above.
 
         Returns:
-            np.ndarray: 2D numpy array of the field for the given particle type.
+            np.ndarray: 2D or 3D numpy array of the field for the given particle type.
 
         TODO: Handle saving and loading of the fields for the masked case.
         """
@@ -113,7 +124,7 @@ class SimulationStacker(object):
         if load:
             try:
                 return self.loadData(pType, nPixels=nPixels, projection=projection, type='field', 
-                                     mask=mask, maskRad=maskRad, base_path=base_path)
+                                     mask=mask, maskRad=maskRad, base_path=base_path, dim=dim)
             except ValueError as e:
                 print(e)
                 print("Computing the field instead...")
@@ -122,24 +133,24 @@ class SimulationStacker(object):
             haloes = self.loadHalos(self.simType)
             haloMass = haloes['GroupMass']
             
-            halo_mask, mass_threshold = select_massive_halos(haloMass, 10**(13.22), 5e14) # TODO: make this configurable from user input
+            halo_mask, _ = select_massive_halos(haloMass, 10**(13.22), 5e14) # TODO: make this configurable from user input
             haloes['GroupMass'] = haloes['GroupMass'][halo_mask]
             haloes['GroupRad'] = haloes['GroupRad'][halo_mask] * maskRad # in kpc/h
             haloes['GroupPos'] = haloes['GroupPos'][halo_mask]
 
             field = create_masked_field(self, halo_cat=haloes, pType=pType, nPixels=nPixels, projection=projection,
-                                        save3D=True, load3D=load, base_path=base_path) # TODO: make save3D and load3D configurable
+                                        save3D=True, load3D=load, base_path=base_path, dim=dim) # TODO: make save3D and load3D configurable
         else:
-            field = create_field(self, pType, nPixels, projection)
+            field = create_field(self, pType, nPixels, projection, dim=dim)
         
         if save:
             # TODO: Handle saving and loading of the fields for the masked case.
             save_data(field, self.simType, self.sim_index, pType, nPixels, 
-                      projection, 'field', mask=mask, maskRad=maskRad, base_path=base_path)
+                      projection, 'field', mask=mask, maskRad=maskRad, base_path=base_path, dim=dim)
 
         return field
 
-    def makeMap(self, pType, z=None, projection='xy', beamsize=1.6, save=False, load=True, 
+    def makeMap(self, pType, projection='xy', beamsize=1.6, save=False, load=True, 
                 pixelSize=0.5, mask=False, maskRad=3.0, base_path=None):
         """Make a 2D map convolved with a beam for a given particle type.
         This is more realistic than makeField
@@ -162,11 +173,8 @@ class SimulationStacker(object):
         Returns:
             np.ndarray: 2D numpy array of the map for the given particle type.
         """        
-        if z is None:
-            z = self.z
             
-        # First define cosmology
-        cosmo = FlatLambdaCDM(H0=100 * self.header['HubbleParam'], Om0=self.header['Omega0'], Tcmb0=2.7255 * u.K)
+        # Use stored cosmology
 
         # Get distance to the snapshot redshift
         # dA = cosmo.angular_diameter_distance(z).to(u.kpc).value
@@ -174,12 +182,13 @@ class SimulationStacker(object):
         
         # Get the box size in angular units.
         # theta_arcmin = np.degrees(self.header['BoxSize'] / dA) * 60  # Convert to arcminutes # TODO: this is wrong for sure!! Change ASAP
-        theta_arcmin = comoving_to_arcmin(self.header['BoxSize'], z, cosmo=cosmo)
-        print(f"Box size: {self.header['BoxSize']} kpc/h , Map size at z={z}: {theta_arcmin:.2f} arcmin")
+        theta_arcmin = comoving_to_arcmin(self.header['BoxSize'], self.z, cosmo=self.cosmo)
+        print(f"Box size: {self.header['BoxSize']} kpc/h , Map size at z={self.z}: {theta_arcmin:.2f} arcmin")
 
         # Round up to the nearest integer, pixel size is 0.5 arcmin as in ACT
         nPixels = np.ceil(theta_arcmin / pixelSize).astype(int)
         arcminPerPixel = theta_arcmin / nPixels  # Arcminutes per pixel, this is the true pixelSize after rounding.
+        self.nPixels_map  = nPixels  # Store the nPixels used for the map in the instance
         # beamsize_pixel = beamsize / arcminPerPixel  # Convert arcminutes to pixels
 
         
@@ -262,7 +271,8 @@ class SimulationStacker(object):
 
     def stackMap(self, pType, filterType='cumulative', minRadius=0.5, maxRadius=6.0, numRadii=11,
                  z=None, projection='xy', save=False, load=True, radDistance=1.0, pixelSize=0.5, 
-                halo_number_density=2.4e-3, mask=False, maskRad=3.0):
+                 halo_number_density=2.4e-3,halo_mass_avg=10**(13.22), halo_mass_upper=5*10**(14), mask=False, maskRad=3.0,
+                 subtract_mean=False):
         """Stack the map of a given particle type.
 
         Args:
@@ -280,6 +290,10 @@ class SimulationStacker(object):
             pixelSize (float, optional): Size of each pixel in arcminutes. Defaults to 0.5.
             halo_mass_avg (float, optional): Average halo mass for selecting halos. Defaults to 10**(13.22).
             halo_mass_upper (float, optional): Upper mass bound for selecting halos. Defaults to None.
+            mask (bool, optional): If True, masks out areas outside of haloes in the map. Defaults to False.
+            maskRad (float, optional): Number of virial radii around each halo to keep unmasked. Only used if mask=True.
+                Defaults to 3x virial radii.
+            subtract_mean (bool, optional): If True, subtracts the mean of the map before stacking. Defaults to False.
 
         Returns:
             radii, profiles: Stacked radial profiles (2D) and their corresponding radii (1D).
@@ -295,8 +309,13 @@ class SimulationStacker(object):
         # Load or create the map
         fieldKey = (pType, z, projection, pixelSize)
         if not (fieldKey in self.maps and self.maps[fieldKey] is not None):
-            self.maps[fieldKey] = self.makeMap(pType, z=z, projection=projection,
+            self.maps[fieldKey] = self.makeMap(pType, projection=projection,
                                                save=save, load=load, pixelSize=pixelSize, mask=mask, maskRad=maskRad)
+
+        # If subtract_mean is True, subtract the mean of the map before stacking.
+        if subtract_mean:
+            map_mean = np.mean(self.maps[fieldKey])
+            self.maps[fieldKey] -= map_mean
 
         # Use the abstracted stacking function
         radii, profiles = self.stack_on_array(
@@ -311,6 +330,11 @@ class SimulationStacker(object):
             halo_number_density=halo_number_density,
             pixelSize=pixelSize
         )
+        
+        # restore the mean if subtracted
+        if subtract_mean:
+            self.maps[fieldKey] += map_mean
+
        # Unit Conversion specific to SZ maps:
         T_CMB = 2.7255
         if pType == 'tau':
@@ -338,7 +362,8 @@ class SimulationStacker(object):
         return radii, profiles 
 
     def stackField(self, pType, filterType='cumulative', minRadius=0.1, maxRadius=4.5, numRadii=25,
-                   projection='xy', nPixels=None, save=False, load=True, radDistance=1000, mask=False, maskRad=3.0):
+                   projection='xy', nPixels=None, save=False, load=True, radDistance=1000, pixelSize=0.5,
+                   halo_number_density=2.4e-3, mask=False, maskRad=3.0, subtract_mean=False):
         """Do stacking on the computed field.
 
         Args:
@@ -353,6 +378,10 @@ class SimulationStacker(object):
             load (bool, optional): If True, loads the stacked field from a file if it exists. Defaults to True.
             radDistance (float, optional): Radial distance units for stacking. Defaults to 1000 kpc/h (so converts to 1 Mpc/h).
                 If None, uses the mean halo radius from the halo catalog.
+            mask (bool, optional): If True, masks out areas outside of haloes in the field. Defaults to False.
+            maskRad (float, optional): Number of virial radii around each halo to keep unmasked. Only used if mask=True. 
+                Defaults to 3x virial radii.
+            subtract_mean (bool, optional): If True, subtracts the mean of the field before stacking. Defaults to False.
 
         Raises:
             NotImplementedError: If pType is not one of the ones listed above.
@@ -380,6 +409,11 @@ class SimulationStacker(object):
             halo_mask = np.where(np.logical_and((haloes['GroupMass'] > mass_min), (haloes['GroupMass'] < mass_max)))[0]
             radDistance = haloes['GroupRad'][halo_mask].mean()
 
+        # If subtract_mean is True, subtract the mean of the map before stacking.
+        if subtract_mean:
+            field_mean = np.mean(self.fields[fieldKey])
+            self.fields[fieldKey] -= field_mean
+
         # Use the abstracted stacking function
         radii, profiles = self.stack_on_array(
             array=self.fields[fieldKey],
@@ -389,9 +423,15 @@ class SimulationStacker(object):
             numRadii=numRadii,
             projection=projection,
             radDistance=radDistance,
-            radDistanceUnits='kpc/h'
+            radDistanceUnits='kpc/h',
+            halo_number_density=halo_number_density
         )
         
+        # restore the mean if subtracted
+        # TODO: this may introduce weird numerics behaviour, check later
+        if subtract_mean:
+            self.fields[fieldKey] += field_mean
+
         # Apply post-processing for CAP filter
         # This is taken care of in the `stack_on_array` function now
         # if filterType == 'CAP':
@@ -432,10 +472,10 @@ class SimulationStacker(object):
         haloMass = haloes['SubhaloMass']  # in 1e10 Msun/h
         haloPos = haloes['SubhaloPos']
 
-        halo_mask, mass_threshold = select_massive_halos(haloMass, self.header['BoxSize'], halo_number_density)
-        self.mass_threshold = mass_threshold  # Store for reference
+        halo_mask, mass_list = select_massive_halos(haloMass, self.header['BoxSize'], halo_number_density)
+        self.halo_mass_selected = mass_list  # Store for reference
 
-        print(f'Number of halos selected: {halo_mask.shape[0]} at Mass threshold: {mass_threshold[0]: .2e} ~ {mass_threshold[1]: .2e} Msun/h')
+        print(f'Number of halos selected: {halo_mask.shape[0]} at Mass threshold: {mass_list[0]: .2e} ~ {mass_list[-1]: .2e} Msun/h')
 
         # Convert radDistance to pixels based on units
         if radDistanceUnits == 'kpc/h':
@@ -444,12 +484,11 @@ class SimulationStacker(object):
             pixelSize_true = kpcPerPixel
         elif radDistanceUnits == 'arcmin':
             z = self.z
-            # Calculate arcmin per pixel
-            cosmo = FlatLambdaCDM(H0=100 * self.header['HubbleParam'], Om0=self.header['Omega0'], Tcmb0=2.7255 * u.K)
-            # dA = cosmo.angular_diameter_distance(z).to(u.kpc).value
+            # Calculate arcmin per pixel using stored cosmology
+            # dA = self.cosmo.angular_diameter_distance(z).to(u.kpc).value
             # dA *= self.header['HubbleParam']  # Convert to kpc/h
             # theta_arcmin = np.degrees(self.header['BoxSize'] / dA) * 60
-            theta_arcmin = comoving_to_arcmin(self.header['BoxSize'], z, cosmo=cosmo)
+            theta_arcmin = comoving_to_arcmin(self.header['BoxSize'], z, cosmo=self.cosmo)
             arcminPerPixel = theta_arcmin / nPixels
             RadPixel = radDistance / arcminPerPixel
             pixelSize_true = arcminPerPixel
@@ -466,22 +505,33 @@ class SimulationStacker(object):
             # filterFunc = delta_sigma_ring
         elif filterType == 'DSigma_mccarthy':
             filterFunc = delta_sigma_mccarthy
+            z = self.z
             if radDistanceUnits != 'arcmin':
                 raise ValueError('DSigma_mccarthy filter currently requires radDistanceUnits to be arcmin')
-            if z is None:
-                raise ValueError('DSigma_mccarthy filter requires a redshift z to be specified')
         else:
             raise NotImplementedError('Filter Type not implemented: ' + filterType)
 
         # Set up radial bins and cutout size
-        radii = np.linspace(minRadius, maxRadius, numRadii)
+        if radDistanceUnits == 'kpc/h':
+            # Linear bins from r_min to r_max (kSZ interest)
+            radii_linear = np.linspace(minRadius, maxRadius, numRadii)
+            # Log bins from r_max to 15 1000*kpc/h (lensing interest) Motivated by MacCarthy 2025
+            radii_log = np.logspace(np.log10(maxRadius), np.log10(15), numRadii)
+            # Concatenate, removing duplicate at r_split
+            radii = np.concatenate([radii_linear, radii_log[1:]])
+        else:  # arcmin units
+            radii = np.linspace(minRadius, maxRadius, numRadii) # in radDistance units 
+
+
         if filterType == 'CAP':
             n_vir = int(np.ceil(np.sqrt(2) * maxRadius)) + 1
         else:
             n_vir = int(radii.max() + 1)  # number of virial radii to cutout
 
         # Do stacking
+        drop_halo_count = 0
         profiles = []
+        kept_masses = []
         for j, haloID in enumerate(halo_mask):
             # Get halo position for the specified projection
             if projection == 'xy':
@@ -498,10 +548,17 @@ class SimulationStacker(object):
                 haloLoc = np.round(haloPos_2D / (self.header['BoxSize'] / nPixels)).astype(int)
             else:  # arcmin units
                 haloLoc = np.round(haloPos_2D / (self.header['BoxSize'] / nPixels)).astype(int)
+        
+            if filter_edge_halo(haloLoc, nPixels, int(np.ceil(np.sqrt(2) * maxRadius))*RadPixel):
+                drop_halo_count += 1
+                continue  # Skip this halo
             
+            # Track the mass of kept halos
+            kept_masses.append(mass_list[j])
+
             # Create cutout and radial distance grid
             cutout = SimulationStacker.cutout_2d_periodic(array, haloLoc, n_vir*RadPixel)
-            rr = SimulationStacker.radial_distance_grid(cutout, (-n_vir, n_vir))
+            rr = SimulationStacker.radial_distance_grid(cutout, (-n_vir, n_vir)) #same unit as n_vir, i.e. radDistance 
             
             
             if filterType == 'DSigma_mccarthy':
@@ -509,15 +566,21 @@ class SimulationStacker(object):
                 # pass
                 if radDistanceUnits != 'arcmin':
                     raise ValueError('DSigma_mccarthy filter currently requires radDistanceUnits to be arcmin')
-                radii, profile, _ = delta_sigma_mccarthy(cutout, rr, pixel_scale_arcmin=pixelSize, z=z, # type: ignore
-                                                         cosmo=cosmo, rmin_theta=minRadius, rmax_theta=maxRadius, n_rbins=numRadii)
+                radii, profile, _ = delta_sigma_mccarthy(cutout, rr, pixel_scale_arcmin=pixelSize_true, z=z, # type: ignore
+                                                         cosmo=self.cosmo, rmin_theta=minRadius, rmax_theta=maxRadius, n_rbins=numRadii)
             elif filterType == 'DSigma':
-                # pass
+                # # TODO: This does not work with stackField for some reason.
+                # if radDistanceUnits == 'arcmin':
+                #     dr = pixelSize_true # 0.5 arcmin in pixels
+                # else:
+                #     # dr = 0.2 # 0.2 kpc/h in pixels
+                #     dr = 3 / RadPixel # number of radDistance units for 3 pixel
+
+                dr = (radii[1]-radii[0])/2
                 profile = []
                 for rad in radii:
                     # TODO: pixel_size unit conversions!! Important
-                    # filt_result = filterFunc(cutout, rr, rad, pixel_size=1.)  # type: ignore
-                    filt_result = filterFunc(cutout, rr, rad, pixel_size=pixelSize_true)  # type: ignore
+                    filt_result = filterFunc(cutout, rr, rad, dr=dr, pixel_size=pixelSize_true)  # dr: #same unit as n_vir, i.e. radDistance arcmin or 1000kpc/h
                     profile.append(filt_result)
                 
                 profile = np.array(profile)
@@ -535,8 +598,10 @@ class SimulationStacker(object):
             profiles.append(profile)
             
         profiles = np.array(profiles).T
+        self.halo_mass_selected = np.array(kept_masses)
 
-        
+        print(f'Dropped {drop_halo_count} halos because too close to the box edge for CAP (sqrt(2)*maxR)')
+
         return radii, profiles
 
     # Other util functions:
@@ -608,9 +673,188 @@ class SimulationStacker(object):
                           header=self.header, keys=keys)
 
     def loadData(self, pType, nPixels=None, projection='xy', type='field', 
-                 mask=False, maskRad=3.0, base_path=None):
+                 mask=False, maskRad=3.0, base_path=None, dim='2D'):
         """Load a precomputed field or map from file."""
         if nPixels is None:
             nPixels = self.nPixels
-        return load_data(self.simType, self.sim_index, pType, nPixels, 
-                         projection, type, mask=mask, maskRad=maskRad, base_path=base_path)
+        return load_data(self.simType, self.sim_index, pType, nPixels, projection, type, 
+                         mask=mask, maskRad=maskRad, base_path=base_path, dim=dim)
+
+
+### Baryon Suppression Functions ###
+
+    def get_field_baryon_suppression(self, grid=512, save=False, 
+                                    threads=1):
+        """Compute baryon suppression in 3D using power spectrum and correlation functions.
+        
+        Computes the cross-correlation between DM-only and total matter (DM+gas+stars+BH)
+        density fields to quantify baryon feedback effects on matter clustering.
+
+        Args:
+            grid (int, optional): Grid resolution for 3D density field (grid^3 voxels). Defaults to 512.
+            plot (bool, optional): If True, plots the power spectrum and correlation function. Defaults to False.
+            save (bool, optional): If True, saves results to npz file. Defaults to False.
+            threads (int, optional): Number of threads for power spectrum calculation. Defaults to None (uses all available).
+            base_path (str, optional): Base path for saving results. Defaults to simulation data path.
+
+        Returns:
+            dict: Dictionary containing:
+                - 'k': wavenumber array (h/Mpc)
+                - 'PX_dm_tot': cross power spectrum P_dm×tot(k)
+                - 'P_dm': DM-only power spectrum P_dm(k)
+                - 'P_tot': total matter power spectrum P_tot(k)
+                - 'r': correlation distance array (Mpc/h)
+                - 'XX_dm_tot': cross correlation function ξ_dm×tot(r)
+                - 'X_dm': DM-only correlation function ξ_dm(r)
+                - 'X_tot': total matter correlation function ξ_tot(r)
+
+        Raises:
+            ImportError: If Pk_library and MAS_library are not installed.
+            
+        Notes:
+            - Uses the existing makeField infrastructure with dim='3D'
+            - Baryon suppression ratio: R(k) = P_dm×tot(k) / sqrt(P_dm(k) * P_tot(k))
+            - Correlation suppression: ξ_dm×tot(r) / ξ_dm(r)
+        """
+        if not HAS_PK_LIBRARY:
+            raise ImportError(
+                "Pk_library and MAS_library are required for baryon suppression calculation. "
+                "Install via: pip install Pk_library MAS_library"
+            )
+        
+        
+        if threads is None:
+            threads = 256  # Default to many threads for HPC environments
+        
+        print(f"Computing 3D density fields at grid resolution {grid}^3...")
+        
+        # Generate 3D fields using existing makeField infrastructure
+        # DM-only field
+        print("Computing DM field...")
+        filed_dm = self.makeField('DM', nPixels=grid,  
+                                  save=False, load=False, dim='3D')
+        
+        # Total matter field (gas + DM + stars + BH)
+        # We'll compute each separately and combine them
+        print("Computing total matter field...")
+        field_total = self.makeField('total', nPixels=grid,
+                                  save=False, load=False, dim='3D')
+                
+        # Convert to overdensity fields
+        print("Converting to overdensity fields...")
+        delta_dm = filed_dm/ np.mean(filed_dm, dtype=np.float64);  delta_dm -= 1.0
+        delta_tot = field_total / np.mean(field_total, dtype=np.float64);  delta_tot -= 1.0
+
+        # Compute power spectra
+        print("Computing power spectra...")
+        BoxSize = self.header['BoxSize']
+        
+        # Cross power spectrum
+        kX, PX_dm_tot = self._compute_pk_3D(delta_dm, delta_tot, BoxSize, grid, threads)
+        
+        # Auto power spectra
+        k, P_dm = self._compute_pk_3D(delta_dm, None, BoxSize, grid, threads)
+        _, P_tot = self._compute_pk_3D(delta_tot, None, BoxSize, grid, threads)
+        
+        # Compute correlation functions
+        print("Computing correlation functions...")
+        rX, XX_dm_tot = self._compute_corr_3D(delta_dm, delta_tot, BoxSize, grid, threads)
+        r, X_dm = self._compute_corr_3D(delta_dm, None, BoxSize, grid, threads)
+        _, X_tot = self._compute_corr_3D(delta_tot, None, BoxSize, grid, threads)
+        
+        # Store results
+        results = {
+            'k': k,
+            'PX_dm_tot': PX_dm_tot,
+            'P_dm': P_dm,
+            'P_tot': P_tot,
+            'r': r,
+            'XX_dm_tot': XX_dm_tot,
+            'X_dm': X_dm,
+            'X_tot': X_tot
+        }
+        
+        if save:
+            print('Saving Baryon Suppression Field...')
+            # Save as NPZ using common utility; ensure dim key uses '3D'
+            save_data(results, self.simType, self.sim_index, 'Pk', grid,
+                       data_type='field', dim='3D', file_type='npz')
+        else:
+            return results
+        
+
+    def _compute_pk_3D(self, field, field_b=None, BoxSize=50000, grid=512, threads=1):
+        """Compute the 3D power spectrum for 3D fields.
+        
+        Args:
+            field (np.ndarray): Primary field, shape (grid, grid, grid). DM field if field_b is provided.
+            field_b (np.ndarray, optional): Secondary baryonic field for cross power spectrum. Defaults to None.
+            BoxSize (float, optional): Physical size of the box in Mpc/h. Defaults to 50.
+            grid (int, optional): Grid resolution. Defaults to 512.
+            threads (int, optional): Number of threads for computation. Defaults to 1.
+
+        Returns:
+            tuple: (k, Pk) - wavenumber array and power spectrum
+        """
+        assert field.ndim == 3, "Input field must have shape (N, N, N)"
+        
+        MAS = 'CIC'
+        verbose = False
+        axis = 0
+        
+        k_nyq = np.pi * grid / BoxSize
+        
+        # Convert to float32 for Pk_library compatibility
+        field = field.astype(np.float32)
+        
+        Pk3D = PKL.Pk(field, BoxSize, axis=axis, MAS=MAS, threads=threads, verbose=verbose)
+        k = Pk3D.k3D
+        Pk_val = Pk3D.Pk[:, 0]  # monopole
+        
+        if field_b is not None:
+            field_b = field_b.astype(np.float32)
+            
+            # Cross power spectrum
+            Pk3D = PKL.XPk([field, field_b], BoxSize, axis=axis, MAS=[MAS, MAS], threads=threads)
+            k = Pk3D.k3D
+            Pk_val = Pk3D.XPk[:, 0, 0]  # monopole of 1-2 cross P(k)
+        
+        return k[k <= k_nyq], Pk_val[k <= k_nyq]
+
+    def _compute_corr_3D(self, field, field_b=None, BoxSize=50000, grid=512, threads=1):
+        """Compute the 3D correlation function for 3D fields.
+        
+        Args:
+            field (np.ndarray): Primary field, shape (grid, grid, grid).
+            field_b (np.ndarray, optional): Secondary field for cross correlation. Defaults to None.
+            BoxSize (float, optional): Physical size of the box in Mpc/h. Defaults to 50.
+            grid (int, optional): Grid resolution. Defaults to 512.
+            threads (int, optional): Number of threads for computation. Defaults to 1.
+
+        Returns:
+            tuple: (r, Xi) - distance array and correlation function
+        """
+        assert field.ndim == 3, "Input field must have shape (N, N, N)"
+        
+        MAS = 'CIC'
+        verbose = False
+        axis = 0
+        
+        # Convert to float32 for Pk_library compatibility
+        field = field.astype(np.float32)
+        
+        CF  = PKL.Xi(field, BoxSize, MAS, axis, threads)
+        
+        # get the auto-correlation
+        r      = CF.r3D      #radii in Mpc/h
+        xi0    = CF.xi[:,0]  #correlation function (monopole)
+
+        if field_b is not None:
+            field_b = field_b.astype(np.float32)
+
+            # Cross-correlation
+            CCF = PKL.XXi(field, field_b, BoxSize, axis=axis, MAS=[MAS, MAS], threads=threads)
+            r      = CCF.r3D      #radii in Mpc/h
+            xi0   = CCF.xi[:,0] 
+        
+        return r[r<=BoxSize], xi0[r<=BoxSize]

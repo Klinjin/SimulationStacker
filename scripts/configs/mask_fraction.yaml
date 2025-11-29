@@ -1,0 +1,6 @@
+sim: 'Illustris-1'
+snapshot: 135
+nPixels: 1080
+
+save_field: false
+save_profile: false

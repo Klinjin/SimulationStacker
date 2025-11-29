@@ -13,13 +13,13 @@ def total_mass(mass_grid, r_grid, r, pixel_size=1.0):
         mass_grid (np.ndarray): The mass distribution array.
         r_grid (np.ndarray): The radial grid corresponding to the mass distribution.
         r (float): The radius at which to calculate the total mass.
-        pixel_size (float, optional): Physical pixel size (Typically in arcminutes)
+        pixel_size (float, optional): placeholder
 
     Returns:
-        float: The total mass within the given radius.
+        float: The total mass within the given radius. M_sun
     """
     pixArea = (pixel_size)**2
-    return float(np.sum(mass_grid[r_grid < r]) * pixArea)
+    return float(np.sum(mass_grid[r_grid < r]))
 
 def CAP(mass_grid, r_grid, r, pixel_size=1.0):
     """Calculate the Circular Averages Profile (CAP) for a given radius.
@@ -28,32 +28,33 @@ def CAP(mass_grid, r_grid, r, pixel_size=1.0):
         mass_grid (np.ndarray): The mass distribution array.
         r_grid (np.ndarray): The radial grid corresponding to the mass distribution.
         r (float): The radius at which to calculate the CAP.
+        pixel_size (float, optional): placeholder -- area unit conversion in stacker.stackMap()
 
     Returns:
-        float: The value of the CAP at the given radius.
+        float: The value of the CAP at the given radius. M_sun or muK
     """
     
     r1 = r * np.sqrt(2.0)
     inDisk = 1.0 * (r_grid <= r)
     inRing = 1.0 * (r_grid > r) * (r_grid <= r1)
-    inRing *= np.sum(inDisk) / np.sum(inRing)
-
-    pixArea = (pixel_size)**2
+    sum_ring = np.sum(inRing)
+    if sum_ring > 0:
+        inRing *= np.sum(inDisk) / sum_ring
     
-    return float(np.sum((inDisk - inRing) * mass_grid) * pixArea)
+    return float(np.sum((inDisk - inRing) * mass_grid))
 
 def delta_sigma(mass_grid, r_grid, r, dr=0.6, pixel_size=1.0):
     """Calculate the excess surface mass density (ΔΣ) for a given radius.
 
     Args:
-        mass_grid (np.ndarray): The mass distribution array.
+        mass_grid (np.ndarray)s: The mass distribution array.
         r_grid (np.ndarray): The radial grid corresponding to the mass distribution.
         r (float): The radius at which to calculate ΔΣ.
         dr (float, optional): The width of the annulus. Defaults to 0.6. (arcminutes)
         pixel_size (float, optional): Physical pixel size (pc or arcmin). Currently unused but kept for API consistency.
 
     Returns:
-        float: The value of ΔΣ at the given radius.
+        float: The value of ΔΣ at the given radius. M_sun / kpc^2 
     """
     
     if dr is None:

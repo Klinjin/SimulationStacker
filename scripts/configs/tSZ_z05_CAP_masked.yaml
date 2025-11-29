@@ -16,7 +16,7 @@ plot:
   # data_path: '../data/Fig1_Fig8_dr10_allfoot_perbin_dr6_pzbin1.npz'
   data_path: '../data/fig4.csv'
   data_label: 'Liu 2025 pz1 (ACT DR6 Fiducial)'
-  fig_path: '../figures/2025-10/compare/'
+  fig_path: '../figures/2025-10/10-29/'
   fig_name: 'profiles_xz_masked'
   fig_type: 'png'
   plot_error_bars: true
@@ -51,7 +51,9 @@ simulations:
         snapshot: 67
       - name: 'TNG300-1'
         snapshot: 67
-      - name: 'TNG300-2'
-        snapshot: 67
-      - name: 'Illustris-2'
+      # - name: 'TNG300-2'
+        # snapshot: 67
+      - name: 'Illustris-1'
         snapshot: 103
+      # - name: 'Illustris-2'
+        # snapshot: 103
