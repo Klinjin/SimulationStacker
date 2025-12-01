@@ -77,6 +77,7 @@ class SimulationStacker(object):
 
         self.nPixels = nPixels
         self.nPixels_map = None  # to be set when making map
+        self.pixelSize_true = None # to be set when stacking on array
 
         with h5py.File(self.snap_path + 'snap_'+ str(snapshot).zfill(3) + f'.{self.chunkNum}.hdf5', 'r') as f:
             self.header = dict(f['Header'].attrs.items())
@@ -84,11 +85,11 @@ class SimulationStacker(object):
         # self.Lbox = self.header['BoxSize'] # kpc/h
         self.h = self.header['HubbleParam'] # Hubble parameter
         self.z = self.header['Redshift'] if self.simType == 'IllustrisTNG' else 0.47
+        self.fb = self.header['OmegaBaryon'] / self.header['Omega0']
 
         # Define cosmology
         self.cosmo = FlatLambdaCDM(H0=100 * self.h, Om0=self.header['Omega0'], Tcmb0=2.7255 * u.K, Ob0=self.header['OmegaBaryon'])
         
-        # self.kpcPerPixel = self.Lbox / self.nPixels # technically kpc/h per pixel
         self.fields = {}
         self.maps = {}
 
@@ -481,17 +482,16 @@ class SimulationStacker(object):
         if radDistanceUnits == 'kpc/h':
             kpcPerPixel = self.header['BoxSize'] / nPixels
             RadPixel = radDistance / kpcPerPixel
-            pixelSize_true = kpcPerPixel
+            self.pixelSize_true = kpcPerPixel
         elif radDistanceUnits == 'arcmin':
-            z = self.z
             # Calculate arcmin per pixel using stored cosmology
             # dA = self.cosmo.angular_diameter_distance(z).to(u.kpc).value
             # dA *= self.header['HubbleParam']  # Convert to kpc/h
             # theta_arcmin = np.degrees(self.header['BoxSize'] / dA) * 60
-            theta_arcmin = comoving_to_arcmin(self.header['BoxSize'], z, cosmo=self.cosmo)
+            theta_arcmin = comoving_to_arcmin(self.header['BoxSize'], self.z, cosmo=self.cosmo)
             arcminPerPixel = theta_arcmin / nPixels
             RadPixel = radDistance / arcminPerPixel
-            pixelSize_true = arcminPerPixel
+            self.pixelSize_true = arcminPerPixel
         else:
             raise ValueError(f"radDistanceUnits must be 'kpc/h' or 'arcmin', got: {radDistanceUnits}")
         
@@ -505,7 +505,6 @@ class SimulationStacker(object):
             # filterFunc = delta_sigma_ring
         elif filterType == 'DSigma_mccarthy':
             filterFunc = delta_sigma_mccarthy
-            z = self.z
             if radDistanceUnits != 'arcmin':
                 raise ValueError('DSigma_mccarthy filter currently requires radDistanceUnits to be arcmin')
         else:
@@ -524,14 +523,12 @@ class SimulationStacker(object):
 
 
         if filterType == 'CAP':
-            n_vir = int(np.ceil(np.sqrt(2) * maxRadius)) + 1
+            n_vir = int(np.ceil(np.sqrt(2) * radii.max())) + 1
         else:
             n_vir = int(radii.max() + 1)  # number of virial radii to cutout
 
         # Do stacking
-        drop_halo_count = 0
         profiles = []
-        kept_masses = []
         for j, haloID in enumerate(halo_mask):
             # Get halo position for the specified projection
             if projection == 'xy':
@@ -549,12 +546,11 @@ class SimulationStacker(object):
             else:  # arcmin units
                 haloLoc = np.round(haloPos_2D / (self.header['BoxSize'] / nPixels)).astype(int)
         
-            if filter_edge_halo(haloLoc, nPixels, int(np.ceil(np.sqrt(2) * maxRadius))*RadPixel):
-                drop_halo_count += 1
-                continue  # Skip this halo
-            
-            # Track the mass of kept halos
-            kept_masses.append(mass_list[j])
+            # if filter_edge_halo(haloLoc, nPixels, int(np.ceil(np.sqrt(2) * maxRadius))*RadPixel):
+            #     drop_halo_count += 1
+            #     continue  # Skip this halo
+            # # Track the mass of kept halos
+            # kept_masses.append(mass_list[j])
 
             # Create cutout and radial distance grid
             cutout = SimulationStacker.cutout_2d_periodic(array, haloLoc, n_vir*RadPixel)
@@ -566,21 +562,15 @@ class SimulationStacker(object):
                 # pass
                 if radDistanceUnits != 'arcmin':
                     raise ValueError('DSigma_mccarthy filter currently requires radDistanceUnits to be arcmin')
-                radii, profile, _ = delta_sigma_mccarthy(cutout, rr, pixel_scale_arcmin=pixelSize_true, z=z, # type: ignore
+                radii, profile, _ = delta_sigma_mccarthy(cutout, rr, pixel_scale_arcmin=self.pixelSize_true, z=self.z, # type: ignore
                                                          cosmo=self.cosmo, rmin_theta=minRadius, rmax_theta=maxRadius, n_rbins=numRadii)
             elif filterType == 'DSigma':
-                # # TODO: This does not work with stackField for some reason.
-                # if radDistanceUnits == 'arcmin':
-                #     dr = pixelSize_true # 0.5 arcmin in pixels
-                # else:
-                #     # dr = 0.2 # 0.2 kpc/h in pixels
-                #     dr = 3 / RadPixel # number of radDistance units for 3 pixel
-
+ 
                 dr = (radii[1]-radii[0])/2
                 profile = []
                 for rad in radii:
                     # TODO: pixel_size unit conversions!! Important
-                    filt_result = filterFunc(cutout, rr, rad, dr=dr, pixel_size=pixelSize_true)  # dr: #same unit as n_vir, i.e. radDistance arcmin or 1000kpc/h
+                    filt_result = filterFunc(cutout, rr, rad, dr=dr, pixel_size=self.pixelSize_true)  # dr: #same unit as n_vir, i.e. radDistance arcmin or 1000kpc/h
                     profile.append(filt_result)
                 
                 profile = np.array(profile)
@@ -598,9 +588,9 @@ class SimulationStacker(object):
             profiles.append(profile)
             
         profiles = np.array(profiles).T
-        self.halo_mass_selected = np.array(kept_masses)
 
-        print(f'Dropped {drop_halo_count} halos because too close to the box edge for CAP (sqrt(2)*maxR)')
+        # self.halo_mass_selected = np.array(kept_masses)
+        # print(f'Dropped {drop_halo_count} halos because too close to the box edge for CAP (sqrt(2)*maxR)')
 
         return radii, profiles
 
@@ -731,7 +721,7 @@ class SimulationStacker(object):
         # Generate 3D fields using existing makeField infrastructure
         # DM-only field
         print("Computing DM field...")
-        filed_dm = self.makeField('DM', nPixels=grid,  
+        field_dm = self.makeField('DM', nPixels=grid,  
                                   save=False, load=False, dim='3D')
         
         # Total matter field (gas + DM + stars + BH)
@@ -742,7 +732,7 @@ class SimulationStacker(object):
                 
         # Convert to overdensity fields
         print("Converting to overdensity fields...")
-        delta_dm = filed_dm/ np.mean(filed_dm, dtype=np.float64);  delta_dm -= 1.0
+        delta_dm = field_dm/ np.mean(field_dm, dtype=np.float64);  delta_dm -= 1.0
         delta_tot = field_total / np.mean(field_total, dtype=np.float64);  delta_tot -= 1.0
 
         # Compute power spectra
