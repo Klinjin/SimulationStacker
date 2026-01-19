@@ -1,0 +1,27 @@
+sim_type: 'IllustrisTNG'
+snapshot: 74
+sim_name: 'L50n512_SB35'
+
+load_field: false
+save_field: false
+rad_distance: 1.0 # in arcmin
+mask_haloes: false
+mask_radii: 3.0 # Number of virial radii to mask out for haloes. In units of R200c
+
+min_radius: 1/6
+max_radius: 6.0
+num_radii: 15
+
+projection: ['xy', 'xz', 'yz']
+
+### Profile parameters
+pixel_size: 0.5 # in arcmin
+filter_type: 'CAP' # Options: 'CAP', 'cumulative', 'DSigma'
+particle_type: 'tau'
+
+n_pixels: 1000
+filter_type_2: 'DSigma' # Options: 'CAP', 'cumulative', 'DSigma'
+particle_type_2: 'total'
+
+### Physical parameters
+number_density: 2.4e-3
