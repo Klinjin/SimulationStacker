@@ -24,7 +24,7 @@ import illustris_python as il
 
 sys.path.append('/pscratch/sd/l/lindajin/SimulationStacker/src/')
 # from tools import numba_tsc_3D, hist2d_numba_seq
-from utils import fft_smoothed_map, comoving_to_arcmin
+from utils import fft_smoothed_map, comoving_to_arcmin, arcmin_to_comoving
 from halos import select_massive_halos, halo_ind, filter_edge_halo
 from filters import total_mass, delta_sigma, CAP, CAP_from_mass, DSigma_from_mass, delta_sigma_mccarthy, delta_sigma_kernel, delta_sigma_ring
 from loadIO import snap_path, load_halos, load_subsets, load_subset, load_data, save_data
@@ -514,12 +514,15 @@ class SimulationStacker(object):
         if radDistanceUnits == 'kpc/h':
             # Linear bins from r_min to r_max (kSZ interest)
             radii_linear = np.linspace(minRadius, maxRadius, numRadii)
-            # Log bins from r_max to 15 1000*kpc/h (lensing interest) Motivated by MacCarthy 2025
-            radii_log = np.logspace(np.log10(maxRadius), np.log10(15), numRadii)
+            # Log bins from r_max to 20 1000*kpc/h (lensing interest) Motivated by MacCarthy 2025
+            radii_log = np.logspace(np.log10(maxRadius), np.log10(20), numRadii)
             # Concatenate, removing duplicate at r_split
             radii = np.concatenate([radii_linear, radii_log[1:]])
         else:  # arcmin units
-            radii = np.linspace(minRadius, maxRadius, numRadii) # in radDistance units 
+            radii_linear = np.linspace(minRadius, maxRadius, numRadii) # in radDistance units 
+            theta_max = comoving_to_arcmin(20*1000, self.z, cosmo=self.cosmo)
+            radii_log = np.logspace(np.log10(maxRadius), np.log10(theta_max), numRadii)
+            radii = np.concatenate([radii_linear, radii_log[1:]])
 
 
         if filterType == 'CAP':

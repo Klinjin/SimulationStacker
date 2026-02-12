@@ -145,7 +145,7 @@ for i, sim_i in enumerate(tqdm(local_sim_indices, desc=f"Rank {rank}")):
             profile_data[f'prof1_{pType1}_{filterType1}_arcmin2_{projection}'] = profiles1_arcmin2
             profile_data[f'prof1_{pType1}_{filterType1}_kpch2_{projection}'] = profiles1
 
-        radii0_mpch = arcmin_to_comoving(1.0, stacker.z, stacker.cosmo) / 1000.0
+        radii0_mpch = arcmin_to_comoving(radii0, stacker.z, stacker.cosmo) / 1000.0
         radii1_arcmin = comoving_to_arcmin(radii1 * 1000.0, stacker.z, cosmo=stacker.cosmo)
         
         # Add radii and metadata to profile_data

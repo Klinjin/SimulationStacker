@@ -424,10 +424,13 @@ def make_sz_field(stacker, pType, nPixels=None, projection='xy', dim='2D'):
         
             if projection == 'xy':
                 coordinates = Co[:, :2]  # Take x and y coordinates
+                b = b[:, 2]  # Take z-component for xy projection
             elif projection == 'xz':
                 coordinates = Co[:, [0, 2]] # Take x and z coordinates
+                b = b[:, 1]  # Take y-component for xz projection
             elif projection == 'yz':
                 coordinates = Co[:, 1:] # Take y and z coordinates
+                b = b[:, 0]  # Take x-component for yz projection
             else:
                 raise NotImplementedError('Projection type not implemented: ' + projection)
 
