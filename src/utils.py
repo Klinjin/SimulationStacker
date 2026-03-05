@@ -367,3 +367,144 @@ def bins_from_geomean_monotonic(r_desired, bins0=None, pick='mid'):
         raise RuntimeError("constructed bins are not strictly increasing (unexpected)")
 
     return bins, (lower, upper)
+
+def mass_to_temp(mass_density, z, cosmology=Planck18, f_b=None):
+    """Convert mass profile units to kSZ temperature fluctuation units
+
+    Args:
+        mass_density (ndarray): Mass density in Msun/area. Area does not change, so can be arcmin^2 or kpc^2.
+        z (float): Redshift.
+        delta_sigma_is_comoving (bool, optional): If True, delta_sigma is in comoving units. Defaults to True.
+        cosmology (FlatLambdaCDM, optional): Cosmology object. Required if delta_sigma_is_comoving is True.
+
+    Returns:
+        ndarray: kSZ temperature fluctuation in micro-Kelvin.
+    """
+    mu_e = 1.14  # Mean molecular weight per free electron, assuming primordial composition
+    T_CMB = 2.7255 * u.K
+    c = 299792458 * u.m / u.s
+    v_rms = 300000 * u.m / u.s  # Example velocity, adjust as needed
+    if f_b is None:
+        Omega_b = cosmology.Ob0
+        Omega_m = cosmology.Om0
+        f_b = Omega_b / Omega_m
+
+    # Electron column and optical depth
+    Sigma_gas = f_b * mass_density                               # kg/m^2
+    N_e = (Sigma_gas / (mu_e * const.m_p)).value #.to(1 / u.m**2)         # 1/m^2 # type: ignore
+    tau = (const.sigma_T * N_e).decompose().value                 # dimensionless # type: ignore
+
+    factor = const.sigma_T / (mu_e * const.m_p)  # m^2/kg # type: ignore
+    
+    # Convert mass density to SI units (kg/m^2)
+    mass_density_si = mass_density.to(u.kg / u.m**2)
+    
+    # Calculate kSZ temperature
+    # T_CMB * (v/c) * (sigma_T / (mu_e * m_p)) * Sigma_gas
+    # K * dimensionless * (m^2/kg) * (kg/m^2) = K
+    kSZ_temp = (T_CMB * (v_rms / c) * factor * mass_density_si).to(u.uK).value
+    
+    return kSZ_temp
+
+def ksz_from_delta_sigma(
+    delta_sigma,
+    z_l,
+    v_los = 300 * u.km / u.s,
+    cosmology = Planck18,
+    mu_e = 1.14,
+    delta_sigma_is_comoving = False,
+    cov_delta_sigma = None,   # optional covariance on ΔΣ
+    return_tau = False,
+):
+    """Convert weak-lensing ΔΣ(R) to kSZ ΔT(R) in μK.
+
+    Assumes Σ_gas = f_b * ΔΣ_phys with f_b = Ω_b / Ω_m and fully ionized gas.
+
+    Args:
+        delta_sigma (astropy.units.Quantity): ΔΣ (mass surface density) with
+            any mass/area unit (e.g. 200 * u.Msun/u.pc**2).
+        z_l (float): Lens redshift. Used only if delta_sigma_is_comoving=True.
+        v_los (astropy.units.Quantity, optional): Electron-weighted LOS peculiar
+            velocity. Sign convention: positive (away from observer) gives
+            negative ΔT. Defaults to 300 km/s.
+        cosmology (astropy.cosmology, optional): Cosmology for T_CMB, Ω_b, Ω_m.
+            Defaults to Planck18.
+        mu_e (float, optional): Mean molecular weight per free electron.
+            Defaults to 1.14.
+        delta_sigma_is_comoving (bool, optional): If True, converts
+            ΔΣ_com → ΔΣ_phys by multiplying by (1+z_l)^2. Defaults to False.
+        cov_delta_sigma (array-like or astropy.units.Quantity, optional):
+            Covariance matrix for ΔΣ, shape (N, N). If a Quantity, unit should
+            be (mass/area)^2. If comoving, multiplied by (1+z_l)^4 to convert
+            to physical units. Defaults to None.
+        return_tau (bool, optional): If True, also return τ (optical depth)
+            implied by f_b * ΔΣ. Defaults to False.
+
+    Returns:
+        float or np.ndarray: kSZ temperature in μK, same shape as delta_sigma.
+            If return_tau=True and/or cov_delta_sigma is not None, returns a
+            tuple of (dT_muK, [tau], [cov_dT_muK]) in that order.
+
+    Raises:
+        TypeError: If delta_sigma is not an astropy Quantity.
+        ValueError: If cov_delta_sigma shape does not match delta_sigma.
+
+    Note:
+        TODO: Check correctness of unit handling in covariance propagation.
+    """
+    T_CMB = cosmology.Tcmb0
+    # T_CMB = 2.7255 * u.K  # FIRAS/Planck normalization
+    Omega_b = cosmology.Ob0
+    Omega_m = cosmology.Om0
+    
+    if not hasattr(delta_sigma, "unit"):
+        raise TypeError("`delta_sigma` must be an astropy Quantity with mass/area units.")
+
+    # Convert comoving ΔΣ → physical ΔΣ
+    ds_phys = delta_sigma * ((1.0 + z_l) ** 2 if delta_sigma_is_comoving else 1.0)
+    ds_phys = ds_phys.to(u.kg / u.m**2)
+
+    # Constant gas fraction
+    f_b = Omega_b / Omega_m
+
+    # Electron column and optical depth
+    Sigma_gas = f_b * ds_phys                               # kg/m^2
+    N_e = (Sigma_gas / (mu_e * const.m_p)).to(1 / u.m**2)         # 1/m^2 # type: ignore
+    tau = (const.sigma_T * N_e).decompose().value                 # dimensionless # type: ignore
+
+    # Linear coefficient α mapping Σ_tot (phys) → ΔT (μK)
+    alpha = (-T_CMB * (v_los / const.c) * const.sigma_T / (mu_e * const.m_p)) # K * m^2/kg # type: ignore
+    alpha *= f_b                                            # include f_b
+    # As μK per (kg/m^2):
+    alpha_muK_per_Sigma = alpha.to(u.uK / (u.kg / u.m**2)).value
+
+    # Mean ΔT in μK
+    dT_muK = (alpha * ds_phys).to(u.uK).value
+
+    # If covariance is provided, propagate it: Cov_T = α^2 * Cov_Σphys
+    outputs = [dT_muK]
+    if return_tau:
+        outputs.append(tau)
+
+    if cov_delta_sigma is not None:
+        cov = cov_delta_sigma
+        # If quantity, convert to (kg/m^2)^2; if plain array, assume same units as delta_sigma
+        if hasattr(cov, "unit"):
+            cov = cov.to((u.kg / u.m**2)**2).value
+        else:
+            cov = np.asarray(cov, dtype=float)
+            # If ΔΣ was comoving, rescale covariance by (1+z)^4 to get physical
+            if delta_sigma_is_comoving:
+                cov = cov * (1.0 + z_l)**4
+
+            # If ΔΣ was not a Quantity (but here it always is), we would need a unit factor.
+
+        cov_shape = np.shape(cov)
+        ds = np.atleast_1d(ds_phys.value)
+        if cov_shape != (ds.size, ds.size):
+            raise ValueError(f"`cov_delta_sigma` must be an (N,N) matrix with N={ds.size}.")
+
+        cov_dT = (alpha_muK_per_Sigma**2) * cov   # μK^2
+        outputs.append(cov_dT)
+
+    return outputs[0] if len(outputs) == 1 else tuple(outputs)

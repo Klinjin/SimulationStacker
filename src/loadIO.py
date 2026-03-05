@@ -51,7 +51,6 @@ def load_halos(sim_path, snapshot, sim_type, sim_name=None, header=None):
     if sim_type == 'IllustrisTNG':
         haloes = {}
         haloes_cat = il.groupcat.loadHalos(sim_path, snapshot)
-        # haloes['GroupMass'] = haloes_cat['GroupMass'] * 1e10  # Convert to Msun/h
         # haloes['GroupPos'] = haloes_cat['GroupPos']
         haloes['GroupRad'] = haloes_cat['Group_R_TopHat200']
         sub_h = haloes_cat['GroupFirstSub'][:]
@@ -62,7 +61,11 @@ def load_halos(sim_path, snapshot, sim_type, sim_name=None, header=None):
         haloes['SubhaloMass']   = subhalos['SubhaloMass'][central_subhalo_ids] * 1e10   
         haloes['SubhaloPos'] = subhalos['SubhaloPos'][central_subhalo_ids]
         haloes['SubhaloGrNr'] = subhalos['SubhaloGrNr'][central_subhalo_ids]
-    
+        haloes['SubhaloStellarMassInRadType'] = subhalos['SubhaloMassInRadType'][central_subhalo_ids,4] * 1e10
+        
+        grp_ids = subhalos['SubhaloGrNr'][central_subhalo_ids]
+        haloes['GroupMass'] = haloes_cat['Group_M_Crit500'][grp_ids] * 1e10  # Convert to Msun/h
+
     return haloes
 
 

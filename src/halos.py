@@ -38,7 +38,7 @@ def select_massive_halos(halo_masses, Boxsize, number_density, upper_mass_bound=
     mass_condition = filtered >= mass_threshold
 
     
-    return valid_indices[mass_condition], filtered[mass_condition]
+    return valid_indices[mass_condition]
 
 
 def filter_edge_halo(haloPos, Boxsize, maxRadius):

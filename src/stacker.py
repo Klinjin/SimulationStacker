@@ -133,8 +133,9 @@ class SimulationStacker(object):
         if mask:
             haloes = self.loadHalos(self.simType)
             haloMass = haloes['GroupMass']
+            StellarMass = haloes['SubhaloStellarMassInRadType']
             
-            halo_mask, _ = select_massive_halos(haloMass, 10**(13.22), 5e14) # TODO: make this configurable from user input
+            halo_mask = select_massive_halos(StellarMass, self.header['BoxSize'], upper_mass_bound=10**(13.22), number_density=5e14) # TODO: make this configurable from user input
             haloes['GroupMass'] = haloes['GroupMass'][halo_mask]
             haloes['GroupRad'] = haloes['GroupRad'][halo_mask] * maskRad # in kpc/h
             haloes['GroupPos'] = haloes['GroupPos'][halo_mask]
@@ -470,11 +471,12 @@ class SimulationStacker(object):
 
         # Load the halo catalog and select halos
         haloes = self.loadHalos()
-        haloMass = haloes['SubhaloMass']  # in 1e10 Msun/h
+        haloMass = haloes['GroupMass']  # in 1e10 Msun/h
         haloPos = haloes['SubhaloPos']
+        subhaloStellarMass = haloes['SubhaloStellarMassInRadType']  # in 1e10 Msun/h
 
-        halo_mask, mass_list = select_massive_halos(haloMass, self.header['BoxSize'], halo_number_density)
-        self.halo_mass_selected = mass_list  # Store for reference
+        halo_mask = select_massive_halos(subhaloStellarMass, self.header['BoxSize'], halo_number_density)
+        self.halo_mass_selected = haloMass[halo_mask]  # Store for reference
 
         print(f'Number of halos selected: {halo_mask.shape[0]} at Mass threshold: {mass_list[0]: .2e} ~ {mass_list[-1]: .2e} Msun/h')
 
@@ -548,12 +550,7 @@ class SimulationStacker(object):
                 haloLoc = np.round(haloPos_2D / (self.header['BoxSize'] / nPixels)).astype(int)
             else:  # arcmin units
                 haloLoc = np.round(haloPos_2D / (self.header['BoxSize'] / nPixels)).astype(int)
-        
-            # if filter_edge_halo(haloLoc, nPixels, int(np.ceil(np.sqrt(2) * maxRadius))*RadPixel):
-            #     drop_halo_count += 1
-            #     continue  # Skip this halo
-            # # Track the mass of kept halos
-            # kept_masses.append(mass_list[j])
+    
 
             # Create cutout and radial distance grid
             cutout = SimulationStacker.cutout_2d_periodic(array, haloLoc, n_vir*RadPixel)
