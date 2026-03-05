@@ -75,10 +75,11 @@ def main(path2config, verbose=True):
     
     # fractionType = config['fraction_type']
     now = datetime.now()
+    yr_string = now.strftime("%Y-%m")
     dt_string = now.strftime("%m-%d")
 
-    figPath = Path(config.get('fig_path')) / dt_string
-    figPath.mkdir(parents=False, exist_ok=True)
+    figPath = Path(config.get('fig_path')) / yr_string /dt_string
+    figPath.mkdir(parents=True, exist_ok=True)
     
     figName = config['fig_name']
     figType = config['fig_type']

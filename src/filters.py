@@ -43,6 +43,28 @@ def CAP(mass_grid, r_grid, r, pixel_size=1.0):
     
     return float(np.sum((inDisk - inRing) * mass_grid))
 
+def CAP_ringring(mass_grid, r_grid, r, r0=1.0, pixel_size=1.0):
+    """Calculate the Circular Averages Profile (CAP) for a given radius.
+
+    Args:
+        mass_grid (np.ndarray): The mass distribution array.
+        r_grid (np.ndarray): The radial grid corresponding to the mass distribution.
+        r (float): The radius at which to calculate the CAP.
+        r0 (float): The inner radius of the ring. Defaults to 1.0.
+
+    Returns:
+        float: The value of the CAP at the given radius.
+    """
+    
+    r1 = r * np.sqrt(2.0)
+    innerRing = 1.0  * (r_grid > r0)*(r_grid <= r)
+    inRing = 1.0 * (r_grid > r) * (r_grid <= r1)
+    inRing *= np.sum(innerRing) / np.sum(inRing)
+
+    pixArea = (pixel_size)**2
+    
+    return float(np.sum((innerRing - inRing) * mass_grid) * pixArea)
+
 def delta_sigma(mass_grid, r_grid, r, dr=0.6, pixel_size=1.0):
     """Calculate the excess surface mass density (ΔΣ) for a given radius.
 
@@ -167,6 +189,7 @@ def delta_sigma_kernel(
 
     R_out = r + dr
     pixArea = (pixel_size)**2
+    # TODO: Change the pixel area in the case of stacking on fields to be the area of each pixel in physical units.
 
     # Build compensated kernel analytically from r_grid
     kernel              = np.zeros_like(r_grid, dtype=float)
@@ -179,6 +202,43 @@ def delta_sigma_kernel(
     
     return float(np.sum(mass_grid * kernel))
 
+def upsilon(
+    mass_grid: np.ndarray,
+    r_grid: np.ndarray,
+    r: float,
+    r0: float = 1.0,
+    dr: float = 0.5,
+    pixel_size: float = 1,
+) -> float:
+    """Compute Υ(R, r0) = ΔΣ(R) - (r0/R)^2 * ΔΣ(r0).
+
+    Args:
+        mass_grid (np.ndarray): 2-D surface mass density map (same shape as
+            ``r_grid``), in mass units per pixel.
+        r_grid (np.ndarray): 2-D array of radial distances from the center for
+            each pixel (same shape as ``mass_grid``). Units must match the units
+            used for ``r``, ``r0``, and ``dr``.
+        r (float): Aperture radius at which to evaluate Υ.
+        r0 (float): Inner radius for Υ calculation.
+        dr (float, optional): Thickness of the outer annulus (R < r < R+dr).
+            Must be positive. Defaults to 0.5.
+        pixel_size (float, optional): Linear size of one pixel in physical
+            units (pc or arcmin). Used to scale the summed kernel value to physical area.
+            Defaults to 1.
+    Returns:
+        float: The computed Υ value (mass per unit area) as a Python float.
+    """
+
+    delta_sigma_R  = delta_sigma_kernel(
+        mass_grid, r_grid, r, dr=dr, pixel_size=pixel_size
+    )
+    delta_sigma_r0 = delta_sigma_kernel(
+        mass_grid, r_grid, r0, dr=dr, pixel_size=pixel_size
+    )
+
+    upsilon_value = delta_sigma_R - (r0 / r)**2 * delta_sigma_r0
+    return upsilon_value
+
 def delta_sigma_ring(
                     mass_grid: np.ndarray,
                     r_grid: np.ndarray,
@@ -189,38 +249,38 @@ def delta_sigma_ring(
                     connectivity: int = 8,
                     return_parts: bool = False,
 ) -> Union[float, np.ndarray, Tuple[Union[float, np.ndarray], Union[float, np.ndarray], Union[float, np.ndarray]]]:
-    """
-    Excess surface density ΔΣ(R) = Σ̄(<R) − Σ(R) using a *border-of-core* definition for Σ(R).
+    """Excess surface density ΔΣ(R) = Σ̄(<R) − Σ(R) using a border-of-core definition for Σ(R).
 
-    Parameters
-    ----------
-    mass_grid : (Ny, Nx) array
-        Mass per pixel (e.g., Msun*h per pixel). NaNs are ignored.
-    r_grid : (Ny, Nx) array
-        Radial map from the chosen center (same units as R, but only the inequality r<R matters).
-    r : float or array-like
-        Radii at which to evaluate ΔΣ. (The bordering set is defined by pixel adjacency, not by a width.)
-    pixel_area_pc2 : float, optional
-        Physical area of a pixel in pc^2. If given, used as-is.
-    pixel_size_pc : float, optional
-        Physical pixel size (pc). Used only if `pixel_area_pc2` is None. Then pixel_area_pc2 = pixel_size_pc**2.
-    connectivity : {4, 8}, default=8
-        Neighbor definition for the “border”: 4-connected (N,S,E,W) or 8-connected (also diagonals).
-    return_parts : bool, default=False
-        If True, return (ΔΣ, Σ̄(<R), Σ(R)).
+    Args:
+        mass_grid (np.ndarray): Mass per pixel (e.g. Msun*h per pixel), shape
+            (Ny, Nx). NaN values are ignored.
+        r_grid (np.ndarray): Radial distance from center for each pixel, shape
+            (Ny, Nx). Units must match r.
+        r (float or array-like): Radii at which to evaluate ΔΣ. The border set
+            is defined by pixel adjacency, not by a fixed width.
+        pixel_area_pc2 (float, optional): Physical area of one pixel in pc^2.
+            If given, takes precedence over pixel_size_pc.
+        pixel_size_pc (float, optional): Physical pixel size in pc. Used only if
+            pixel_area_pc2 is None; then pixel_area_pc2 = pixel_size_pc**2.
+        connectivity (int, optional): Neighbor definition for the border pixels.
+            4 for N/S/E/W neighbors only; 8 to also include diagonals. Defaults to 8.
+        return_parts (bool, optional): If True, also return (Σ̄(<R), Σ(R)) in
+            addition to ΔΣ. Defaults to False.
 
-    Returns
-    -------
-    ΔΣ : float or ndarray of shape like r
-        In Msun*h / pc^2. If return_parts=True, also returns (mean_sigma, ring_sigma).
+    Returns:
+        float or np.ndarray: ΔΣ in Msun*h / pc^2 with shape matching r.
+            If return_parts=True, returns a tuple (ΔΣ, Σ̄(<R), Σ(R)).
 
-    Notes
-    -----
-    • Core set:    C(R)  = { (i,j) : r_grid[i,j] < R }
-    • Border set:  B(R)  = { neighbors of C(R) by chosen connectivity }  C(R)
-      Implemented via logical shifts of the core mask (no scipy required).
-    • Σ̄(<R) and Σ(R) are computed as pixel-wise means divided by pixel area, which equals
-      (sum mass) / (sum area) when all pixels have the same area.
+    Raises:
+        ValueError: If neither pixel_area_pc2 nor pixel_size_pc is provided;
+            if connectivity is not 4 or 8; if no pixels satisfy r < R; or if
+            no border pixels are found for a given R.
+
+    Note:
+        Core set:   C(R)  = { (i,j) : r_grid[i,j] < R }
+        Border set: B(R)  = neighbors of C(R) by chosen connectivity, minus C(R).
+        Implemented via logical shifts of the core mask (no scipy required).
+        Σ̄(<R) and Σ(R) are pixel-wise means divided by pixel area.
     """
     if pixel_area_pc2 is None:
         if pixel_size_pc is None:

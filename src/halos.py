@@ -1,6 +1,19 @@
 import numpy as np
 
 def halo_ind(ind):
+    """Return mass bin boundaries and label string for a given bin index.
+
+    Args:
+        ind (int): Mass bin index. Must be 0, 1, or 2.
+
+    Returns:
+        tuple: A 3-tuple (mass_min, mass_max, label) where mass_min and
+            mass_max are the lower and upper halo mass bounds in M☉, and
+            label is a LaTeX-formatted string describing the bin.
+
+    Raises:
+        ValueError: If ind is not 0, 1, or 2.
+    """
     if ind == 0:
         return 5e11, 1e12, r'$5\times 10^{11} M_\odot < M_{\rm halo} < 10^{12} M_\odot$, '
     elif ind == 1:
@@ -73,3 +86,35 @@ def filter_edge_halo(haloPos, Boxsize, maxRadius):
     return too_close_x or too_close_y
 
 
+def select_abundance_subhalos(halo_masses, target_number, Lbox):
+    """Select the most massive halos to match a target number density.
+
+    Sorts halos by mass in descending order and selects the top N halos
+    such that N / box_volume matches the target number density.
+
+    Args:
+        halo_masses (array-like): Array of halo masses.
+        target_number (float): Target number density for the selected halos.
+            Units: (cMpc/h)^-3.
+        Lbox (float): Length of the simulation box in ckpc/h.
+
+    Returns:
+        np.ndarray: Integer indices into halo_masses for the selected halos,
+            sorted by decreasing mass, shape (N_selected,).
+    """
+    box_volume = (Lbox / 1e3) ** 3  # Convert ckpc/h to cMpc/h
+    Ngal = int(target_number * box_volume) # Total number of galaxies desired
+    
+    
+    idx_selected = np.argsort(halo_masses)[::-1][:Ngal]
+    
+    # sorted_m = halo_masses[order]
+    # cum_counts = np.arange(1, len(sorted_m) + 1)
+    # cum_number_density = cum_counts / box_volume
+
+    # idx = np.searchsorted(cum_number_density, target_number, side='right')
+    # if idx == 0:
+    #     raise ValueError("No subset of halos meets the target number density.")
+    # cutoff = idx
+    # selected = order[:cutoff]
+    return idx_selected

@@ -23,8 +23,8 @@ import astropy.units as u
 sys.path.append('../src/')
 # from filter_utils import *
 from utils import ksz_from_delta_sigma, arcmin_to_comoving, comoving_to_arcmin
-from SZstacker import SZMapStacker # type: ignore
 from stacker import SimulationStacker
+from halos import select_massive_halos
 
 sys.path.append('../../illustrisPython/')
 import illustris_python as il # type: ignore
@@ -46,7 +46,7 @@ matplotlib.rcParams.update({
     "axes.labelsize": 20,
     "xtick.labelsize": 20,
     "ytick.labelsize": 20,
-    "legend.fontsize": 20,
+    "legend.fontsize": 14,
 })
 # --- END NEW ---
 
@@ -69,32 +69,34 @@ def main(path2config, verbose=True):
     
     # Stacking parameters
     redshift = stack_config.get('redshift', 0.5)
-    filterType = stack_config.get('filter_type', 'CAP')
     loadField = stack_config.get('load_field', True)
     saveField = stack_config.get('save_field', True)
+
+    stackField = stack_config.get('stack_field', False)
     radDistance = stack_config.get('rad_distance', 1.0)
-    pType = stack_config.get('particle_type', 'tau')
+    minRadius = stack_config.get('min_radius', 1.0)
+    maxRadius = stack_config.get('max_radius', 10.0)
+    numRadii = stack_config.get('num_radii', 11)
+    
+    pixelSize = stack_config.get('pixel_size', 0.5)
+    nPixels = stack_config.get('n_pixels', 1000) 
     projection = stack_config.get('projection', 'xy')
     
+    filterType = stack_config.get('filter_type', 'CAP')
+    pType = stack_config.get('particle_type', 'tau')
     filterType2 = stack_config.get('filter_type_2', 'DSigma')
     pType2 = stack_config.get('particle_type_2', 'total')
 
-    minRadius = stack_config.get('min_radius', 1.0)
-    maxRadius = stack_config.get('max_radius', 10.0)
-    # nRadii = stack_config.get('num_radii', 11)
-
     subtract_mean = stack_config.get('subtract_mean', False)
-
-
-    # fractionType = config['fraction_type']
 
     # Plotting parameters
     # get the datetime for file naming
     now = datetime.now()
+    yr_string = now.strftime("%Y-%m")
     dt_string = now.strftime("%m-%d")
 
-    figPath = Path(plot_config.get('fig_path')) / dt_string
-    figPath.mkdir(parents=False, exist_ok=True)
+    figPath = Path(plot_config.get('fig_path')) / yr_string / dt_string
+    figPath.mkdir(parents=True, exist_ok=True)
     plotErrorBars = plot_config.get('plot_error_bars', True)
     figName = plot_config.get('fig_name', 'default_figure')
     figType = plot_config.get('fig_type', 'pdf')
@@ -103,11 +105,11 @@ def main(path2config, verbose=True):
     colourmaps = ['hsv', 'twilight']
 
     # Create 2x2 subplot grid with shared axes
-    fig, axes = plt.subplots(2, 2, figsize=(13, 12), sharex='col', sharey='row')
+    fig, axes = plt.subplots(2, 2, figsize=(18, 10), sharex='col', sharey='row')
     
     # Define particle type configurations for each row
     ptype_configs = [
-        {'pType': 'gas', 'pType2': 'total'},
+        {'pType': 'ionized_gas', 'pType2': 'total'},
         {'pType': 'baryon', 'pType2': 'total'}
     ]
     
@@ -148,32 +150,26 @@ def main(path2config, verbose=True):
                     
                     stacker = SimulationStacker(sim_name, snapshot, z=redshift, 
                                                 simType=sim_type_name)
-                    # stacker_tot = SimulationStacker(sim_name, snapshot, z=redshift, 
-                    #                                simType=sim_type_name)
                     try:
                         OmegaBaryon = stacker.header['OmegaBaryon']
                     except KeyError:
                         OmegaBaryon = 0.0456  # Default value for Illustris-1
                     cosmo_tng = FlatLambdaCDM(H0=100 * stacker.header['HubbleParam'], Om0=stacker.header['Omega0'], Tcmb0=2.7255 * u.K, Ob0=OmegaBaryon)                    
 
-                    radii0, profiles0 = stacker.stackMap(pType_current, filterType=filterType, minRadius=minRadius, maxRadius=maxRadius, # type: ignore
-                                                        save=saveField, load=loadField, radDistance=radDistance,
-                                                        projection=projection)
-                    radii1, profiles1 = stacker.stackMap(pType2_current, filterType=filterType2, minRadius=minRadius, maxRadius=maxRadius, # type: ignore
-                                                            save=saveField, load=loadField, radDistance=radDistance,
-                                                            projection=projection)
-                    # minRad_mpch = arcmin_to_comoving(1.0, redshift, cosmo) / 1000.0
-                    # maxRad_mpch = arcmin_to_comoving(6.0, redshift, cosmo) / 1000.0
-                    # # print(f"minRad_mpch: {minRad_mpch}, maxRad_mpch: {maxRad_mpch}")
-                    # radii1, profiles1 = stacker.stackField(pType2, filterType=filterType2, minRadius=minRad_mpch, maxRadius=maxRad_mpch, numRadii=11, # type: ignore
-                    #                                         save=saveField, load=loadField, radDistance=1000, nPixels=1000,
-                    #                                         projection=projection)
-                    
+                    if sim_name == 'TNG300-1':
+                        # We get a mean kpc/h value for R200c, so we need to convert it to arcmin for the stacking. We define the forward and inverse functions here:
+                        def forward_arcmin(arcmin):
+                            return arcmin_to_comoving(arcmin, redshift, cosmo_tng)
+                        def inverse_arcmin(comoving):
+                            return comoving_to_arcmin(comoving, redshift, cosmo_tng)
+                        # Halo selection:
+                        haloes = stacker.loadHalos()
+                        haloMass = haloes['GroupMass']
+                        halo_mask = select_massive_halos(haloMass, 10**(13.22), 5e14) # TODO: make this configurable from user input
+                        R200C_tng = np.mean(haloes['GroupRad'][halo_mask]) # in comoving kpc/h
+                        tng_R200C_arcmin = inverse_arcmin(R200C_tng) # convert to arcmin
+                        print(f"R200c for {sim_name} at z={redshift} is approximately {R200C_tng:.2f} comoving kpc/h, which corresponds to {tng_R200C_arcmin:.2f} arcmin.")
 
-                    # profiles1 = ksz_from_delta_sigma(profiles1 * u.Msun / u.pc**2, redshift, delta_sigma_is_comoving=True, cosmology=cosmo) # convert to kSZ
-                    # profiles1 = np.abs(profiles1) # take absolute value, since some profiles are negative.
-
-                
 
                 elif sim_type_name == 'SIMBA':
                     # SIMBA simulations have different feedback models               
@@ -184,34 +180,48 @@ def main(path2config, verbose=True):
                         print(f"Processing feedback model: {feedback}")
                     
                     stacker = SimulationStacker(sim_name, snapshot, z=redshift,
-                                        simType=sim_type_name, 
-                                        feedback=feedback)
-                    # stacker_tot = SimulationStacker(sim_name, snapshot, z=redshift, 
-                    #                                simType=sim_type_name, 
-                    #                                feedback=feedback)
+                                                simType=sim_type_name, 
+                                                feedback=feedback)
                     OmegaBaryon = 0.048  # Default value for SIMBA
                     cosmo_simba = FlatLambdaCDM(H0=100 * stacker.header['HubbleParam'], Om0=stacker.header['Omega0'], Tcmb0=2.7255 * u.K, Ob0=OmegaBaryon)
+                                        
+                    if sim_name == 'm100n1024':
+                        # We get a mean kpc/h value for R200c, so we need to convert it to arcmin for the stacking. We define the forward and inverse functions here:
+                        def forward_arcmin(arcmin):
+                            return arcmin_to_comoving(arcmin, redshift, cosmo_simba)
+                        def inverse_arcmin(comoving):
+                            return comoving_to_arcmin(comoving, redshift, cosmo_simba)
+                        # Halo selection:
+                        haloes = stacker.loadHalos()
+                        haloMass = haloes['GroupMass']
+                        halo_mask = select_massive_halos(haloMass, 10**(13.22), 5e14) # TODO: make this configurable from user input
+                        R200C_simba = np.mean(haloes['GroupRad'][halo_mask]) # in comoving kpc/h
+                        simba_R200C_arcmin = inverse_arcmin(R200C_simba) # convert to arcmin
+                        print(f"R200c for {sim_name} at z={redshift} is approximately {R200C_simba:.2f} comoving kpc/h, which corresponds to {simba_R200C_arcmin:.2f} arcmin.")
 
                     
                 else:
                     raise ValueError(f"Unknown simulation type: {sim_type_name}")
 
                 
-                # Now for Plotting
+                # Now we do the stacking for both simulation types
             
-            
-                radii0, profiles0 = stacker.stackMap(pType_current, filterType=filterType, minRadius=minRadius, maxRadius=maxRadius,  # type: ignore
-                                                    save=saveField, load=loadField, radDistance=radDistance,
-                                                    projection=projection, subtract_mean=subtract_mean)
-                radii1, profiles1 = stacker.stackMap(pType2_current, filterType=filterType2, minRadius=minRadius, maxRadius=maxRadius, # type: ignore
-                                                        save=saveField, load=loadField, radDistance=radDistance,
+                if stackField:
+                    radii0, profiles0 = stacker.stackField(pType_current, filterType=filterType, minRadius=minRadius, maxRadius=maxRadius, numRadii=numRadii, # type: ignore
+                                                           save=saveField, load=loadField, radDistance=radDistance, nPixels=nPixels,
+                                                           projection=projection) 
+                    radii1, profiles1 = stacker.stackField(pType2_current, filterType=filterType2, minRadius=minRadius, maxRadius=maxRadius, numRadii=numRadii, # type: ignore
+                                                           save=saveField, load=loadField, radDistance=radDistance, nPixels=nPixels,
+                                                           projection=projection)
+                else:
+                
+                    radii0, profiles0 = stacker.stackMap(pType_current, filterType=filterType, minRadius=minRadius, maxRadius=maxRadius, numRadii=numRadii, # type: ignore
+                                                        save=saveField, load=loadField, radDistance=radDistance, pixelSize=pixelSize,
                                                         projection=projection, subtract_mean=subtract_mean)
-                # minRad_mpch = arcmin_to_comoving(1.0, redshift, cosmo) / 1000.0
-                # maxRad_mpch = arcmin_to_comoving(6.0, redshift, cosmo) / 1000.0
-                # # print(f"minRad_mpch: {minRad_mpch}, maxRad_mpch: {maxRad_mpch}")
-                # radii1, profiles1 = stacker.stackField(pType2, filterType=filterType2, minRadius=minRad_mpch, maxRadius=maxRad_mpch, numRadii=11, # type: ignore
-                #                                         save=saveField, load=loadField, radDistance=1000, nPixels=1000,
-                #                                         projection=projection)
+                    radii1, profiles1 = stacker.stackMap(pType2_current, filterType=filterType2, minRadius=minRadius, maxRadius=maxRadius, numRadii=numRadii, # type: ignore
+                                                         save=saveField, load=loadField, radDistance=radDistance, pixelSize=pixelSize,
+                                                         projection=projection, subtract_mean=subtract_mean)
+                # Convert delta Sigma profiles to kSZ profiles if needed
                                                                 
                 # profiles1 = ksz_from_delta_sigma(profiles1 * u.Msun / u.pc**2, redshift, delta_sigma_is_comoving=True, cosmology=cosmo) # convert to kSZ
                 # profiles1 = np.abs(profiles1) # take absolute value, since some profiles are negative.
@@ -320,13 +330,13 @@ def main(path2config, verbose=True):
         for col_idx, title in enumerate(['IllustrisTNG', 'SIMBA']):
             ax = axes[row_idx, col_idx]
             
-            # Only set x-label on bottom row
-            if row_idx == 1:
-                ax.set_xlabel('R [arcmin]', fontsize=18)
             
             # Only set y-label on left column
             if col_idx == 0:
                 ax.set_ylabel(rf'$\frac{{{pType_current}}}{{{pType2_current}}} \; / \; (\Omega_b / \Omega_m)$', fontsize=18)
+                ax.axvline(tng_R200C_arcmin, color='gray', ls=':', lw=2, label=r'$R_{200c}$') # type: ignore
+            elif col_idx == 1:
+                ax.axvline(simba_R200C_arcmin, color='gray', ls=':', lw=2, label=r'$R_{200c}$') # type: ignore
             
             # Add secondary y-axis only for right column (SIMBA)
             # if col_idx == 1:
@@ -338,14 +348,23 @@ def main(path2config, verbose=True):
             #     if row_idx == 0:
             #         secax.set_ylabel(r'$\tau_{\rm CAP} = T_{kSZ}/T_{CMB}\;\; c/v_{rms}$')
             
-            # Add secondary x-axis only for top row
-            if row_idx == 0:
-                secax_x = ax.secondary_xaxis('top', functions=(forward_arcmin, inverse_arcmin))
-                secax_x.set_xlabel('R [comoving kpc/h]', fontsize=18)
+            
+            # Set x-label and secondary x-axis depending on stackField
+            if stackField:
+                ax.set_xlabel('R [comoving kpc/h]', fontsize=18)
+            else:
+                # Only set x-label on bottom row
+                if row_idx == 1:
+                    ax.set_xlabel('R [arcmin]', fontsize=18)
+                    ax.legend(loc='lower right')
+
+                # Add secondary x-axis only for top row
+                if row_idx == 0:
+                    secax_x = ax.secondary_xaxis('top', functions=(forward_arcmin, inverse_arcmin))
+                    secax_x.set_xlabel('R [comoving kpc/h]', fontsize=18)
 
             ax.axhline(1.0, color='k', ls='--', lw=2)
             ax.set_xlim(0.0, maxRadius * radDistance + 0.5)
-            ax.legend(loc='lower right', fontsize=20)
             ax.grid(True)
             
             # Add title only to top row
@@ -353,12 +372,17 @@ def main(path2config, verbose=True):
                 ax.set_title(f'{title}', fontsize=20)
     
     # fig.suptitle(f'Profile Ratios at z={redshift}', fontsize=22, y=0.995)
+    if stackField:
+        figName_all = figPath / f'2x2_{figName}_z{redshift}_{filterType}_{filterType2}_field_ratio.{figType}'
+    else:
+        figName_all = figPath / f'2x2_{figName}_z{redshift}_{filterType}_{filterType2}_ratio.{figType}'
     
+    # fig.suptitle(f'{filterType} / {filterType2} Profile Ratios at $z={redshift}$', fontsize=22) # TEST; REMOVE LATER
     fig.tight_layout()
-    fig.savefig(figPath / f'2x2_{figName}_z{redshift}_{filterType}_{filterType2}_ratio.{figType}', dpi=300) # type: ignore
+    fig.savefig(figName_all, dpi=300) # type: ignore
     plt.close(fig)
     
-    print('Done!!!')
+    print('Done!!!, time taken: {:.2f} minutes'.format((time.time() - t0) / 60))
 
 if __name__ == "__main__":
     

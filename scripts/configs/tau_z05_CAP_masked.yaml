@@ -16,9 +16,9 @@ plot:
   # data_path: '../data/Fig1_Fig8_dr10_allfoot_perbin_dr6_pzbin1.npz'
   data_path: '../data/Fig2_sim.npz'
   data_label: 'Hadzhiyska 2024'
-  fig_path: '../figures/2025-11'
+  fig_path: '../figures/'
   fig_name: 'profiles_xy_masked'
-  fig_type: 'png'
+  fig_type: 'pdf'
   plot_error_bars: true
 
 
@@ -54,5 +54,5 @@ simulations:
       #   snapshot: 67
       - name: 'Illustris-1'
         snapshot: 103
-      # - name: 'Illustris-2'
-      #   snapshot: 103
+      - name: 'Illustris-2'
+        snapshot: 103

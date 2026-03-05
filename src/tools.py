@@ -10,11 +10,23 @@ from nbodykit.lab import ArrayCatalog, FieldMesh
 
 @njit(nogil=True, parallel=False)
 def hist2d_numba_seq(tracks, bins, ranges, weights=np.empty(0), dtype=np.float32):
+    """Numba-JIT 2D histogram, 8-9x faster than np.histogram2d.
+
+    Precompiling the signature enables faster repeated calls. The nogil flag
+    means this could in principle be threaded.
+
+    Args:
+        tracks (np.ndarray): Particle coordinates, shape (2, N). Row 0 is the
+            first axis, row 1 is the second axis.
+        bins (array-like): Number of bins along each axis, length 2.
+        ranges (np.ndarray): Bin ranges, shape (2, 2). Row i is [min_i, max_i].
+        weights (np.ndarray, optional): Per-particle weights, shape (N,).
+            If empty (default), particles are counted with unit weight.
+        dtype (np.dtype, optional): Accumulator dtype. Defaults to np.float32.
+
+    Returns:
+        np.ndarray: 2D histogram array, shape (bins[0], bins[1]), dtype float64.
     """
-    This is 8-9 times faster than np.histogram
-    We give the signature here so it gets precompmiled
-    In theory, this could even be threaded (nogil!)
-    """    
     #H = np.zeros((bins[0], bins[1]), dtype=np.uint64)
     H = np.zeros((bins[0], bins[1]), dtype=np.float64)
     delta = 1/((ranges[:,1] - ranges[:,0]) / bins)
@@ -34,31 +46,39 @@ def hist2d_numba_seq(tracks, bins, ranges, weights=np.empty(0), dtype=np.float32
 
 @numba.vectorize
 def rightwrap(x, L):
+    """Wrap a coordinate to [0, L) by subtracting L if x >= L.
+
+    Vectorized Numba ufunc for periodic right-side wrapping.
+
+    Args:
+        x (float): Coordinate value to wrap.
+        L (float): Box/grid size defining the periodic boundary.
+
+    Returns:
+        float: Wrapped coordinate, equal to x if x < L, or x - L otherwise.
+    """
     if x >= L:
         return x - L
     return x
 
 @njit
 def dist(pos1, pos2, L=None):
-    '''
-    Calculate L2 norm distance between a set of points
-    and either a reference point or another set of points.
-    Optionally includes periodicity.
-    
-    Parameters
-    ----------
-    pos1: ndarray of shape (N,m)
-        A set of points
-    pos2: ndarray of shape (N,m) or (m,) or (1,m)
-        A single point or set of points
-    L: float, optional
-        The box size. Will do a periodic wrap if given.
-    
-    Returns
-    -------
-    dist: ndarray of shape (N,)
-        The distances between pos1 and pos2
-    '''
+    """Calculate L2 norm distances between a set of points and a reference.
+
+    Computes pairwise distances between pos1 and pos2, with optional periodic
+    wrapping. JIT-compiled with Numba for performance.
+
+    Args:
+        pos1 (np.ndarray): Set of points, shape (N, m).
+        pos2 (np.ndarray): Reference point(s), shape (N, m), (m,), or (1, m).
+            If shape is (1, m) or (m,), the single point is broadcast against
+            all rows of pos1.
+        L (float, optional): Box size for periodic wrapping. If given, distances
+            are computed with minimum image convention. Defaults to None.
+
+    Returns:
+        np.ndarray: Distances, shape (N,).
+    """
     
     # read dimension of data
     N, nd = pos1.shape
@@ -88,6 +108,26 @@ def dist(pos1, pos2, L=None):
 
 @numba.jit(nopython=True, nogil=True)
 def numba_tsc_3D(positions, density, boxsize, weights=np.empty(0)):
+    """Deposit particle masses/weights onto a 3D grid using Triangular Shape Cloud (TSC) interpolation.
+
+    Accumulates weighted particle contributions into a 3D density grid
+    using TSC (quadratic spline) kernel. Supports both 2D and 3D grids
+    (detected automatically from grid shape). Uses periodic boundary
+    conditions via the rightwrap helper.
+
+    Args:
+        positions (np.ndarray): Particle positions in simulation units,
+            shape (N, 3). Must be in [0, boxsize).
+        density (np.ndarray): Output density grid to accumulate into,
+            shape (gx, gy, gz). Modified in place. Set gz=1 for 2D.
+        boxsize (float): Simulation box size in the same units as positions.
+        weights (np.ndarray, optional): Per-particle weights, shape (N,).
+            If empty (default), each particle contributes weight 1.
+            If length 1, that scalar weight is broadcast to all particles.
+
+    Returns:
+        np.ndarray: The updated density grid (same object as input density).
+    """
     gx = np.uint32(density.shape[0])
     gy = np.uint32(density.shape[1])
     gz = np.uint32(density.shape[2])

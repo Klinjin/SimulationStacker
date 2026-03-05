@@ -281,19 +281,28 @@ import time
 #     else:
 #         raise ValueError('Particle type not recognized: ' + pType)
 
-def create_field(stacker, pType, nPixels, projection, dim='2D'):
-    """Wrapper function to create the appropriate field type.
+def create_field(stacker, pType, nPixels, projection, dim='2D', load=True):
+    """Dispatch field creation to the appropriate low-level function.
+
+    Routes to make_sz_field for SZ particle types ('tSZ', 'kSZ', 'tau'),
+    make_combined_field for composite types ('total', 'baryon'), and
+    make_mass_field for all other particle types.
 
     Args:
         stacker (SimulationStacker): The stacker instance.
-        pType (str): The type of particle ('tSZ', 'kSZ', or 'tau').
-        nPixels (int): The number of pixels in the map.
-        projection (str): The projection direction ('xy', 'yz', or 'xz').
-        save (bool): Whether to save the field data.
-        load (bool): Whether to load the field data.
+        pType (str): Particle type. One of 'gas', 'DM', 'Stars', 'BH',
+            'ionized_gas', 'baryon', 'total' for mass fields, or 'tSZ',
+            'kSZ', 'tau' for SZ fields.
+        nPixels (int): Number of pixels per side of the output field.
+        projection (str): Projection direction, one of 'xy', 'yz', 'xz'.
+        dim (str, optional): Field dimensionality, '2D' or '3D'.
+            Defaults to '2D'.
+        load (bool, optional): If True, attempts to load component fields
+            from cache (used by make_combined_field). Defaults to True.
 
     Returns:
-        np.ndarray: The created field data.
+        np.ndarray: Created field, shape (nPixels, nPixels) for 2D or
+            (nPixels, nPixels, nPixels) for 3D.
     """
     
     sz_types = ['tSZ', 'kSZ', 'tau']
@@ -302,25 +311,41 @@ def create_field(stacker, pType, nPixels, projection, dim='2D'):
     if pType in sz_types:
         return make_sz_field(stacker, pType, nPixels, projection, dim=dim)
     elif pType in combined_types:
-        return make_combined_field(stacker, pType, nPixels, projection, dim=dim)
+        return make_combined_field(stacker, pType, nPixels, projection, dim=dim, load=load)
     else:
         return make_mass_field(stacker, pType, nPixels, projection, dim=dim)
 
 
 def make_sz_field(stacker, pType, nPixels=None, projection='xy', dim='2D'):
-    """Create a map from the simulation data. 
-    Much of the algo for this method comes from the SZ_TNG repo on Github authored by Boryana Hadzhiyska.
+    """Create a projected SZ field from gas particle data.
+
+    Computes tSZ (Compton-y), kSZ (kinematic SZ), or tau (optical depth)
+    fields by iterating over snapshot chunks and accumulating per-particle
+    contributions. Algorithm follows the SZ_TNG repo by Boryana Hadzhiyska.
 
     Args:
-        stacker (SimulationStacker): The stacker instance.
-        pType (str): The type of particle to use for the map. Either 'tSZ', 'kSZ', or 'tau'. Added 'tau_DM'
-            Note that in the case of 'kSZ', an optical depth (tau) map will be created instead of a velocity map.
-        z (float, optional): The redshift to use for the map. Defaults to None.
-        nPixels: Size of the output map in pixels. Defaults to stacker.nPixels.
-        projection (str, optional): The projection direction ('xy', 'yz', or 'xz'). Defaults to 'xy'.
-        dim (str, optional): Dimension of the map ('2D' or '3D'). Defaults to '2D'.
-    
-    TODO: Implement the same functionality for DM. 
+        stacker (SimulationStacker): The stacker instance providing simulation
+            metadata, paths, and header information.
+        pType (str): SZ field type. One of 'tSZ', 'kSZ', 'tau'. Also accepts
+            'tau_DM' (experimental, treated as 'tau').
+        nPixels (int, optional): Number of pixels per side of the output field.
+            Defaults to stacker.nPixels.
+        projection (str, optional): Projection direction, one of 'xy', 'yz', 'xz'.
+            Defaults to 'xy'.
+        dim (str, optional): Field dimensionality, '2D' or '3D'.
+            Defaults to '2D'.
+
+    Returns:
+        np.ndarray: SZ field, shape (nPixels, nPixels) for 2D or
+            (nPixels, nPixels, nPixels) for 3D. Units are dimensionless
+            (Compton-y for tSZ, optical depth tau for kSZ/tau) per pixel.
+
+    Raises:
+        ValueError: If pType is not a recognized SZ field type, or if dim is
+            not '2D' or '3D'.
+
+    Note:
+        TODO: Implement equivalent functionality for DM particles.
     """
     if nPixels is None:
         nPixels = stacker.nPixels
@@ -414,9 +439,9 @@ def make_sz_field(stacker, pType, nPixels=None, projection='xy', dim='2D'):
         # compute the contribution to the y and b signals of each cell
         # ne*dV cancel unit length of simulation and unit_vol converts ckpc/h^3 to cm^3
         # both should be unitless (const*Te/d_A**2 is cm^2/cm^2; sigma_T/d_A^2 is unitless)
-        dY = const*(ne*Te*dV)*unit_vol/(a*Lbox_hkpc*(kpc_to_cm/h)/nPixels)**2.#d_A**2 # Compton Y parameter
+        dY = const*(ne*Te*dV)*unit_vol/(a*Lbox_hkpc*(kpc_to_cm/h)/nPixels)**2. #d_A**2 # Compton Y parameter
         b = sigma_T*(ne[:, None]*(Ve/c)*dV[:, None])*unit_vol/(a*Lbox_hkpc*(kpc_to_cm/h)/nPixels)**2.#d_A**2 # kSZ signal
-        tau = sigma_T*(ne*dV)*unit_vol/(a*Lbox_hkpc*(kpc_to_cm/h)/nPixels)**2.#d_A**2 # Optical depth. This is what we use for tau
+        tau = sigma_T*(ne*dV)*unit_vol/(a*Lbox_hkpc*(kpc_to_cm/h)/nPixels)**2. #d_A**2 # Optical depth. This is what we use for tau
 
         # Now we make the fields:
         
@@ -474,7 +499,7 @@ def make_mass_field(stacker, pType, nPixels=None, projection='xy', dim='2D'):
 
     Args:
         stacker (SimulationStacker): The stacker instance.
-        pType (str): Particle Type. One of 'gas', 'DM', 'Stars', or 'BH'
+        pType (str): Particle Type. One of 'gas', 'DM', 'Stars', or 'BH', or 'ionized_gas' and 'neutral_gas'.
         nPixels (int, optional): Number of pixels in each direction of the 2D Field. Defaults to stacker.nPixels.
         projection (str, optional): Direction of the field projection. Currently only 'xy' is implemented. Defaults to 'xy'.
         dim (str, optional): Dimension of the map ('2D' or '3D'). Defaults to '2D'.
@@ -490,6 +515,20 @@ def make_mass_field(stacker, pType, nPixels=None, projection='xy', dim='2D'):
     """
     if nPixels is None:
         nPixels = stacker.nPixels
+        
+    if pType == 'ionized_gas':
+        print("Warning: 'ionized_gas' is experimental.")
+        use_ionized_gas = True
+        pType = 'gas'
+        get_neutral_gas = False
+    elif pType == 'neutral_gas':
+        print("Warning: 'neutral_gas' is experimental.")
+        use_ionized_gas = True
+        pType = 'gas'
+        get_neutral_gas = True
+    else:
+        use_ionized_gas = False
+        get_neutral_gas = False
             
     Lbox = stacker.header['BoxSize'] # kpc/h
     
@@ -518,10 +557,37 @@ def make_mass_field(stacker, pType, nPixels=None, projection='xy', dim='2D'):
     t0 = time.time()
     for i, snap in enumerate(snaps):
         # particles = stacker.loadSubset(pType, snapPath=snap)
-        particles = load_subset(snap, pType, header=stacker.header, sim_name=stacker.simType)
-        coordinates = particles['Coordinates'] # kpc/h
-        masses = particles['Masses']  * 1e10 / stacker.header['HubbleParam'] # Msun/h
+        if use_ionized_gas:
+            keys = ['Coordinates', 'Masses', 'ElectronAbundance']
+        else:
+            keys = ['Coordinates', 'Masses']
         
+        particles = load_subset(snap, pType, header=stacker.header, sim_name=stacker.simType,
+                                keys=keys)
+        coordinates = particles['Coordinates'] # kpc/h
+        # masses = particles['Masses'].astype(np.float64)  * 1e10 #/ stacker.header['HubbleParam'] # Msun
+        masses = particles['Masses'].astype(np.float64)  * 1e10 # Msun/h # this is better than doing just Msun
+        
+        if use_ionized_gas:
+            solar_mass = 1.989e33 # g
+            m_p = 1.6726e-24 # g, mass of proton
+            X_H = 0.76 # unitless, primordial hydrogen fraction
+            h = stacker.header['HubbleParam'] # Hubble Parameter
+            
+            Mgas_g = particles['Masses'].astype(np.float64)  * 1e10 * (solar_mass / h) # convert to grams
+            xe = particles['ElectronAbundance']
+            Ne = xe * X_H * Mgas_g / m_p # dimensionless count of electrons
+            mu_e = 2.0 / (1.0 + X_H)
+
+            Mion_e_g = Ne * m_p * mu_e # grams of ionized gas
+            masses = Mion_e_g * (h / solar_mass) # convert back to Msun/h
+            
+            # ionized_fractions = xe * X_H / (1 + X_H + xe * 2) # number of electrons per baryon
+            # ionized_fractions = particles['IonizedFractions']
+            # masses *= ionized_fractions
+            if get_neutral_gas:
+                total_gas_mass = particles['Masses'].astype(np.float64)  * 1e10 # Msun/h
+                masses = total_gas_mass - masses
         
         if dim == '2D':
             
@@ -607,6 +673,8 @@ def make_combined_field(stacker, pType, nPixels=None, projection='xy', dim='2D',
                 print(e)
                 print("Computing the field instead...")
                 field = make_mass_field(stacker, pt, nPixels, projection, dim=dim)
+        else:
+            field = make_mass_field(stacker, pt, nPixels, projection, dim=dim)
         total_field += field
 
     return total_field

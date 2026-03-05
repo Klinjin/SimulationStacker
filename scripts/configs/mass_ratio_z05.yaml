@@ -1,26 +1,38 @@
 stack:
   redshift: 0.5
-  filter_type: 'cumulative' # Options: 'CAP', 'cumulative', 'DSigma'
   load_field: true
   save_field: true
-  rad_distance: 1.0 # in arcmin
+
+  stack_field: false # If false, stacks maps instead of fields
+  rad_distance: 1.0 # in arcmin, or comoving kpc/h if stack_field is true
+  min_radius: 1.0 # in rad_distance units
+  max_radius: 10.0 # in rad_distance units
+  num_radii: 11 # Number of radial bins between min_radius and max_radius
+  
   mask_haloes: false
   mask_radii: 3.0 # Number of virial radii to mask out for haloes. In units of R200c
-  particle_type: 'gas'
+
+  pixel_size: 0.5 # in arcmin if stack_field is false
+  n_pixels: 1000 # Number of pixels on a side if stack_field is true
   projection: 'yz' # 'xy', 'xz', 'yz'
-  pixel_size: 0.5 # in arcmin
-  filter_type_2: 'cumulative' # Options: 'CAP', 'cumulative', 'DSigma'
+
+  filter_type: 'CAP' # Options: 'CAP', 'cumulative', 'DSigma', 'upsilon'
+  particle_type: 'ionized_gas'
+  filter_type_2: 'CAP' # Options: 'CAP', 'cumulative', 'DSigma', 'upsilon'
   particle_type_2: 'total'
-  subtract_mean: false
+
+  subtract_mean: false # Whether to subtract the mean of the field before stacking
+  use_subhalos: true # Whether to use subhalos instead of host halos for stacking. If true, will select subhalos based on abundance matching to match the number density specified by the user (see below).
 
 
 plot:
   plot_data: false
-  data_path: '../data/Fig1_Fig8_dr10_allfoot_perbin_dr6_pzbin1.npz'
-  data_label: 'Hadzhiyska 2024 pz1'
-  fig_path: '../figures/2025-11/'
+  data_path: '/pscratch/sd/r/rhliu/projects/Weak_lensing/ratio_measurements/specY3_hsc/ratio_specY3_hsc_zbin1_DSigma_ksz_uniformweight.npz'
+  # data_path: '../data/Fig1_Fig8_dr10_allfoot_perbin_dr6_pzbin1.npz'
+  # data_label: 'Hadzhiyska 2024 pz1'
+  fig_path: '../figures/'
   fig_name: 'ratios_yz'
-  fig_type: 'png'
+  fig_type: 'pdf'
   plot_error_bars: true
 
 

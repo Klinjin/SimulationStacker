@@ -31,6 +31,7 @@ import illustris_python as il # type: ignore
 import yaml
 import argparse
 from pathlib import Path
+from datetime import datetime
 
 
 # --- NEW: set default font to Computer Modern (with fallbacks) and increase tick fontsize ---
@@ -40,12 +41,12 @@ matplotlib.rcParams.update({
     "text.usetex": True,
     "mathtext.fontset": "cm",
     # Base font sizes (adjust as desired)
-    "font.size": 20,
-    "axes.titlesize": 20,
-    "axes.labelsize": 20,
-    "xtick.labelsize": 20,
-    "ytick.labelsize": 20,
-    "legend.fontsize": 20,
+    "font.size": 16,
+    "axes.titlesize": 18,
+    "axes.labelsize": 18,
+    "xtick.labelsize": 16,
+    "ytick.labelsize": 16,
+    "legend.fontsize": 14,
 })
 # --- END NEW ---
 
@@ -78,8 +79,13 @@ def main(path2config, verbose=True):
     loadField = stack_config.get('load_field', True)
     saveField = stack_config.get('save_field', True)
     radDistance = stack_config.get('rad_distance', 1.0)
+    
     pType = stack_config.get('particle_type', 'tau')
     projection = stack_config.get('projection', 'xy')
+
+    minRadius = stack_config.get('min_radius', 1.0)
+    maxRadius = stack_config.get('max_radius', 10.0)
+    nRadii = stack_config.get('num_radii', 11)
 
     maskHaloes = stack_config.get('mask_haloes', False)
     maskRadii = stack_config.get('mask_radii', 2.0) # in virial radii
@@ -89,8 +95,13 @@ def main(path2config, verbose=True):
     # fractionType = config['fraction_type']
 
     # Plotting parameters
-    figPath = Path(plot_config.get('fig_path'))
-    figPath.mkdir(parents=False, exist_ok=True)
+    # get the datetime for file naming
+    now = datetime.now()
+    yr_string = now.strftime("%Y-%m")
+    dt_string = now.strftime("%m-%d")
+
+    figPath = Path(plot_config.get('fig_path', '../figures/')) / yr_string / dt_string
+    figPath.mkdir(parents=True, exist_ok=True)
     plotErrorBars = plot_config.get('plot_error_bars', True)
     figName = plot_config.get('fig_name', 'default_figure')
     figType = plot_config.get('fig_type', 'pdf')
@@ -98,7 +109,7 @@ def main(path2config, verbose=True):
     colourmaps = ['hot', 'cool']
     colourmaps = ['hsv', 'twilight']
 
-    fig, (ax_tng, ax_simba) = plt.subplots(1, 2, figsize=(18, 8), sharey=True)
+    fig, (ax_tng, ax_simba) = plt.subplots(2, 1, figsize=(9, 9), sharex=True)
     
     t0 = time.time()
     for i, sim_type in enumerate(config['simulations']):
@@ -112,7 +123,10 @@ def main(path2config, verbose=True):
             ax = ax_tng  # Plot TNG on left subplot
         if sim_type_name == 'SIMBA':
             SIMBA_sims = sim_type['sims']
-            colours = colourmap(np.linspace(0.2, 0.85, len(SIMBA_sims)))
+            if len(SIMBA_sims) > 1:
+                colours = colourmap(np.linspace(0.2, 0.85, len(SIMBA_sims)))
+            else:
+                colours = colourmap(np.linspace(0.2, 0.85, 6))[-1:] # Use the last color if only one SIMBA sim, otherwise generate a range of colors
             ax = ax_simba  # Plot SIMBA on right subplot
 
         if verbose:
@@ -130,9 +144,9 @@ def main(path2config, verbose=True):
                 stacker = SimulationStacker(sim_name, snapshot, z=redshift, 
                                             simType=sim_type_name)
 
-                radii0, profiles0 = stacker.stackMap(pType, filterType=filterType, minRadius=1.0, maxRadius=6.0, pixelSize=pixelSize, # type: ignore
-                                                     save=saveField, load=loadField, radDistance=radDistance,
-                                                     projection=projection, mask=maskHaloes, maskRad=maskRadii)
+                # radii0, profiles0 = stacker.stackMap(pType, filterType=filterType, minRadius=minRadius, maxRadius=maxRadius, pixelSize=pixelSize, # type: ignore
+                #                                      save=saveField, load=loadField, radDistance=radDistance,
+                #                                      projection=projection, mask=maskHaloes, maskRad=maskRadii)
 
 
                 try:
@@ -154,9 +168,9 @@ def main(path2config, verbose=True):
                                             simType=sim_type_name, 
                                             feedback=feedback)
 
-                radii0, profiles0 = stacker.stackMap(pType, filterType=filterType, minRadius=1.0, maxRadius=6.0, pixelSize=pixelSize, # type: ignore
-                                                     save=saveField, load=loadField, radDistance=radDistance,
-                                                     projection=projection, mask=maskHaloes, maskRad=maskRadii)
+                # radii0, profiles0 = stacker.stackMap(pType, filterType=filterType, minRadius=minRadius, maxRadius=maxRadius, pixelSize=pixelSize, # type: ignore
+                #                                      save=saveField, load=loadField, radDistance=radDistance,
+                #                                      projection=projection, mask=maskHaloes, maskRad=maskRadii)
                 
                 OmegaBaryon = 0.048  # Default value for SIMBA
 
@@ -180,6 +194,10 @@ def main(path2config, verbose=True):
             else:
                 raise ValueError(f"Unknown simulation type: {sim_type_name}")
 
+            radii0, profiles0 = stacker.stackMap(pType, filterType=filterType, minRadius=minRadius, maxRadius=maxRadius, 
+                                                 numRadii=nRadii, pixelSize=pixelSize,
+                                                 save=saveField, load=loadField, radDistance=radDistance,
+                                                 projection=projection, mask=maskHaloes, maskRad=maskRadii)
             
             # Now for Plotting
             
@@ -222,11 +240,14 @@ def main(path2config, verbose=True):
 
     if plot_config['plot_data']:
         data_path = plot_config['data_path']
+        rad_key = plot_config.get('rad_key', 'RApArcmin')
+        data_key = plot_config.get('data_key', 'pz1_act_dr6_fiducial')
+        data_err_key = data_key + '_err'
         # data = np.load(data_path)
         data = pd.read_csv(data_path)
-        r_data = data['RApArcmin']
-        profile_data = data['pz1_act_dr6_fiducial']
-        profile_err = data['pz1_act_dr6_fiducial_err']
+        r_data = data[rad_key]
+        profile_data = data[data_key]
+        profile_err = data[data_err_key]
         # Plot data on both subplots
         ax_tng.errorbar(r_data, profile_data, yerr=profile_err, fmt='s', color='k', 
                        label=plot_config['data_label'], markersize=8, zorder=10)
@@ -235,15 +256,19 @@ def main(path2config, verbose=True):
 
     # Configure both subplots
     for ax, title in zip([ax_tng, ax_simba], ['IllustrisTNG', 'SIMBA']):
-        ax.set_xlabel('R [arcmin]', fontsize=18)
+        # ax.set_xlabel('R [arcmin]', fontsize=18)
         ax.set_yscale(plot_config.get('yscale', 'log'))
         
         # Set tick label font size
         # ax.tick_params(axis='both', which='major', labelsize=14)
         # ax.tick_params(axis='both', which='minor', labelsize=12)
 
-        if title == 'IllustrisTNG':
-            ax.set_ylabel(r'Compton-$y$ [$\rm{arcmin}^2$]')#, fontsize=18)
+        ax.set_ylabel(r'Compton-$y$ [$\rm{arcmin}^2$]')#, fontsize=18)
+        if title == 'SIMBA':
+            ax.set_xlabel('R [arcmin]', fontsize=18)
+
+        # if title == 'IllustrisTNG':
+            # ax.set_ylabel(r'Compton-$y$ [$\rm{arcmin}^2$]')#, fontsize=18)
         # elif title == 'SIMBA':
         #     secax = ax.secondary_yaxis('right',
         #                            functions=(lambda y: y * k,
@@ -254,13 +279,13 @@ def main(path2config, verbose=True):
         # Secondary Y axis
         k = 1 / (T_CMB * v_c * 1e6)
 
-        
-        ax.set_xlim(0.0, 6.5)
+        xmin = np.max((minRadius * radDistance - 1.0, 0))
+        ax.set_xlim(xmin, maxRadius * radDistance + 0.5)
         ax.legend(loc='best')#, fontsize=20)
         ax.grid(True)
         ax.set_title(f'{title}')#, fontsize=20)
 
-    fig.suptitle(f'Stacked {pType} profiles, {filterType} filter, z={redshift}', fontsize=20)
+    # fig.suptitle(f'Stacked {pType} profiles, {filterType} filter, z={redshift}', fontsize=20)
     fig.tight_layout()
     if maskHaloes:
         fig.savefig(figPath / f'{figName}_{pType}_z{redshift}_masked_{maskRadii:.1f}.{figType}', dpi=300) # type: ignore

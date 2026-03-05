@@ -1,23 +1,31 @@
 stack:
   redshift: 0.5
-  filter_type: 'DSigma' # Options: 'CAP', 'cumulative', 'DSigma
   load_field: true
-  save_field: true
+  save_field: false
+
+  stack_field: false # If false, stacks maps instead of fields
   rad_distance: 1.0 # in arcmin
+  min_radius: 1.0 # in rad_distance units
+  max_radius: 10.0 # in rad_distance units
+  num_radii: 11 # Number of radial bins between min_radius and max_radius
+
   mask_haloes: false
   mask_radii: 3.0 # Number of virial radii to mask out for haloes. In units of R200c
-  particle_type: 'tau'
+  
   projection: 'yz' # 'xy', 'xz', 'yz'
-  pixel_size: 0.5 # in arcmin
-  filter_type_2: 'DSigma' # Options: 'CAP', 'cumulative', 'DSigma
+  pixel_size: 0.2 # in arcmin
+  filter_type: 'DSigma' # Options: 'CAP', 'cumulative', 'DSigma'
+  particle_type: 'ionized_gas'
+
+  filter_type_2: 'DSigma' # Options: 'CAP', 'cumulative', 'DSigma'
   particle_type_2: 'total'
 
 plot:
   plot_data: false
   data_path: '../data/Fig1_Fig8_dr10_allfoot_perbin_dr6_pzbin1.npz'
   data_label: 'Hadzhiyska 2024 pz1'
-  fig_path: '../figures/2025-11/'
-  fig_name: 'ratio_yz'
+  fig_path: '../figures/'
+  fig_name: 'ratio_yz_beamtest'
   fig_type: 'png'
   plot_error_bars: true
 
@@ -47,7 +55,11 @@ simulations:
     sims:
       - name: 'TNG100-1'
         snapshot: 67
+      - name: 'TNG300-1'
+        snapshot: 67
       - name: 'TNG300-2'
         snapshot: 67
+      - name: 'Illustris-1'
+        snapshot: 103
       - name: 'Illustris-2'
         snapshot: 103

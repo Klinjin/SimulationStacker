@@ -33,6 +33,7 @@ import illustris_python as il # type: ignore
 import yaml
 import argparse
 from pathlib import Path
+from datetime import datetime
 
 # --- NEW: set default font to Computer Modern (with fallbacks) and increase tick fontsize ---
 matplotlib.rcParams.update({
@@ -89,8 +90,12 @@ def main(path2config, verbose=True):
     # fractionType = config['fraction_type']
 
     # Plotting parameters
-    figPath = Path(plot_config.get('fig_path'))
-    figPath.mkdir(parents=False, exist_ok=True)
+    now = datetime.now()
+    yr_string = now.strftime("%Y-%m")
+    dt_string = now.strftime("%m-%d")
+
+    figPath = Path(plot_config.get('fig_path', '../figures/')) / yr_string / dt_string
+    figPath.mkdir(parents=True, exist_ok=True)
     plotErrorBars = plot_config.get('plot_error_bars', True)
     figName = plot_config.get('fig_name', 'default_figure')
     figType = plot_config.get('fig_type', 'pdf')
@@ -188,7 +193,7 @@ def main(path2config, verbose=True):
             print(f'{sim_name} kpcPerPixel: {kpcPerPixel}')
                                           
             # Halo selection:
-            haloes = stacker.loadHalos(stacker.simType)
+            haloes = stacker.loadHalos()
             haloMass = haloes['GroupMass']
             
             halo_mask = select_massive_halos(haloMass, 10**(13.22), 5e14) # TODO: make this configurable from user input
@@ -238,7 +243,7 @@ def main(path2config, verbose=True):
             # plot_term = profiles1
 
             # profiles_plot = np.mean(plot_term, axis=1)
-            profiles_plot = np.mean(profiles0, axis=1) / np.mean(profiles1, axis=1) / (OmegaBaryon / stacker.header['Omega0'])
+            profiles_plot = np.mean(profiles0, axis=1) / np.mean(profiles1, axis=1) #/ (OmegaBaryon / stacker.header['Omega0'])
             # profiles_plot = np.mean(profiles0, axis=1) / np.mean(profiles1, axis=1)
             # profiles_plot = np.median(plot_term, axis=1)
             ax.plot(radii * radDistance, profiles_plot, label=sim_name, color=colours[j], lw=2, marker='o')
@@ -347,7 +352,7 @@ def main(path2config, verbose=True):
     
     fig.tight_layout()
     # fig.savefig(figPath / f'{figName}_{pType}_z{redshift}_ratio.{figType}', dpi=300) # type: ignore
-    fig.savefig(figPath / f'{pType}_{pType2}_{figName}_z{redshift}_{filterType}_{filterType2}_3D_ratio.{figType}', dpi=300) # type: ignore
+    fig.savefig(figPath / f'{pType}_{pType2}_{figName}_z{redshift}_3D_ratio.{figType}', dpi=300) # type: ignore
     plt.close(fig)
     
     print('Done!!!')

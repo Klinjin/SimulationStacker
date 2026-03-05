@@ -38,7 +38,7 @@ def parallel_download(urls, output_dirs, max_workers=4):
 
 # Example usage
 if __name__ == "__main__":
-    snapshot = 125
+    snapshot = 136
     urls = [
         # f"http://simba.roe.ac.uk/simdata/m50n512/s50/catalogs/m50n512_{snapshot}.hdf5",
         # f"http://simba.roe.ac.uk/simdata/m50n512/s50noagn/catalogs/m50n512_{snapshot}.hdf5",

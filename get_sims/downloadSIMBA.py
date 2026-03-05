@@ -40,21 +40,21 @@ def parallel_download(urls, output_dirs, max_workers=4):
 
 # Example usage
 if __name__ == "__main__":
-    snapshot = 134
+    snapshot = 136
     urls = [
-        f"http://simba.roe.ac.uk/simdata/m50n512/s50/snapshots/snap_m50n512_{snapshot}.hdf5",
-        f"http://simba.roe.ac.uk/simdata/m50n512/s50noagn/snapshots/snap_m50n512_{snapshot}.hdf5",
-        f"http://simba.roe.ac.uk/simdata/m50n512/s50nox/snapshots/snap_m50n512_{snapshot}.hdf5",
-        f"http://simba.roe.ac.uk/simdata/m50n512/s50nojet/snapshots/snap_m50n512_{snapshot}.hdf5",
-        f"http://simba.roe.ac.uk/simdata/m50n512/s50nofb/snapshots/snap_m50n512_{snapshot}.hdf5",
-        # f"http://simba.roe.ac.uk/simdata/m100n1024/s50/snapshots/snap_m100n1024_{snapshot}.hdf5"
+        # f"http://simba.roe.ac.uk/simdata/m50n512/s50/snapshots/snap_m50n512_{snapshot}.hdf5",
+        # f"http://simba.roe.ac.uk/simdata/m50n512/s50noagn/snapshots/snap_m50n512_{snapshot}.hdf5",
+        # f"http://simba.roe.ac.uk/simdata/m50n512/s50nox/snapshots/snap_m50n512_{snapshot}.hdf5",
+        # f"http://simba.roe.ac.uk/simdata/m50n512/s50nojet/snapshots/snap_m50n512_{snapshot}.hdf5",
+        # f"http://simba.roe.ac.uk/simdata/m50n512/s50nofb/snapshots/snap_m50n512_{snapshot}.hdf5",
+        f"http://simba.roe.ac.uk/simdata/m100n1024/s50/snapshots/snap_m100n1024_{snapshot}.hdf5"
     ]
     output_dirs = [
-        "/pscratch/sd/r/rhliu/simulations/SIMBA/m50n512/s50/snapshots/",
-        "/pscratch/sd/r/rhliu/simulations/SIMBA/m50n512/s50noagn/snapshots/",
-        "/pscratch/sd/r/rhliu/simulations/SIMBA/m50n512/s50nox/snapshots/",
-        "/pscratch/sd/r/rhliu/simulations/SIMBA/m50n512/s50nojet/snapshots/",
-        "/pscratch/sd/r/rhliu/simulations/SIMBA/m50n512/s50nofb/snapshots/",
-        # "/pscratch/sd/r/rhliu/simulations/SIMBA/m100n1024/s50/snapshots/"
+        # "/pscratch/sd/r/rhliu/simulations/SIMBA/m50n512/s50/snapshots/",
+        # "/pscratch/sd/r/rhliu/simulations/SIMBA/m50n512/s50noagn/snapshots/",
+        # "/pscratch/sd/r/rhliu/simulations/SIMBA/m50n512/s50nox/snapshots/",
+        # "/pscratch/sd/r/rhliu/simulations/SIMBA/m50n512/s50nojet/snapshots/",
+        # "/pscratch/sd/r/rhliu/simulations/SIMBA/m50n512/s50nofb/snapshots/",
+        "/pscratch/sd/r/rhliu/simulations/SIMBA/m100n1024/s50/snapshots/"
     ]
     parallel_download(urls, output_dirs, max_workers=5)

@@ -1,0 +1,74 @@
+stack:
+  redshift: 0.2
+  load_field: true
+  save_field: true
+
+  stack_field: false # If false, stacks maps instead of fields
+  rad_distance: 1.0 # in arcmin, or comoving kpc/h if stack_field is true
+  min_radius: 1.0 # in rad_distance units
+  max_radius: 6.0 # in rad_distance units
+  num_radii: 11 # Number of radial bins between min_radius and max_radius
+  
+  mask_haloes: false
+  mask_radii: 3.0 # Number of virial radii to mask out for haloes. In units of R200c
+
+  pixel_size: 0.2 # in arcmin if stack_field is false
+  n_pixels: 1000 # Number of pixels on a side if stack_field is true
+  projection: 'yz' # 'xy', 'xz', 'yz'
+
+  filter_type: 'DSigma' # Options: 'CAP', 'cumulative', 'DSigma', 'upsilon'
+  particle_type: 'ionized_gas'
+  filter_type_2: 'DSigma' # Options: 'CAP', 'cumulative', 'DSigma', 'upsilon'
+  particle_type_2: 'total'
+
+  subtract_mean: false # Whether to subtract the mean of the field before stacking
+
+
+plot:
+  plot_data: true
+  # data_path: '/pscratch/sd/r/rhliu/projects/Weak_lensing/ratio_measurements/specY3_hsc/ratio_specY3_hsc_zbin1_DSigma_ksz_uniformweight.npz'
+  # data_path: /pscratch/sd/r/rhliu/projects/Weak_lensing/ratio_measurements/spec_Y3/ratio_LRG_full_no_src_with_cluster_mask_zbin1_DSigma_ksz_ggl.npz
+  data_path: /pscratch/sd/r/rhliu/projects/Weak_lensing/ratio_measurements/spec_Y3/ratio_BGS_full_no_src_with_cluster_mask_zbin0_DSigma_ksz_ggl.npz
+  # data_path: '../data/Fig1_Fig8_dr10_allfoot_perbin_dr6_pzbin1.npz'
+  # data_label: 'Hadzhiyska 2024 pz1'
+  fig_path: '../figures/'
+  fig_name: 'BGS_z00_ratios_yz_data'
+  fig_type: 'png'
+  plot_error_bars: true
+
+
+simulations:
+  - sim_type: 'SIMBA'
+    sims:
+      # - name: 'm50n512'
+      #   snapshot: 125
+      #   feedback: 's50'
+      # - name: 'm50n512'
+      #   snapshot: 125
+      #   feedback: 's50noagn'
+      # - name: 'm50n512'
+      #   snapshot: 125
+      #   feedback: 's50nox'
+      # - name: 'm50n512'
+      #   snapshot: 125
+      #   feedback: 's50nojet'
+      # - name: 'm50n512'
+      #   snapshot: 125
+      #   feedback: 's50nofb'
+      - name: 'm100n1024'
+        snapshot: 151
+        feedback: 's50'
+  - sim_type: 'IllustrisTNG'
+    sims:
+      # - name: 'TNG100-1'
+        # snapshot: 80
+      # - name: 'TNG300-1'
+        # snapshot: 67
+      - name: 'TNG300-2'
+        snapshot: 99
+      # - name: 'TNG50-3'
+      #   snapshot: 67
+      - name: 'Illustris-1'
+        snapshot: 135
+      # - name: 'Illustris-2'
+      #   snapshot: 103

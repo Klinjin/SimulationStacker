@@ -23,11 +23,11 @@ import glob
 import illustris_python as il 
 
 sys.path.append('/pscratch/sd/l/lindajin/SimulationStacker/src/')
-# from tools import numba_tsc_3D, hist2d_numba_seq
+# # from tools import numba_tsc_3D, hist2d_numba_seq
 from utils import fft_smoothed_map, comoving_to_arcmin, arcmin_to_comoving
-from halos import select_massive_halos, halo_ind, filter_edge_halo
-from filters import total_mass, delta_sigma, CAP, CAP_from_mass, DSigma_from_mass, delta_sigma_mccarthy, delta_sigma_kernel, delta_sigma_ring
-from loadIO import snap_path, load_halos, load_subsets, load_subset, load_data, save_data
+from halos import select_massive_halos, halo_ind, filter_edge_halo, select_abundance_subhalos
+from filters import total_mass, delta_sigma, CAP, CAP_ringring, CAP_from_mass, DSigma_from_mass, delta_sigma_mccarthy, delta_sigma_kernel, delta_sigma_ring, upsilon
+from loadIO import load_subhalos, snap_path, load_halos, load_subsets, load_subset, load_data, save_data
 from mapMaker import create_field, create_masked_field
 
 try:
@@ -131,7 +131,7 @@ class SimulationStacker(object):
                 print("Computing the field instead...")
                 
         if mask:
-            haloes = self.loadHalos(self.simType)
+            haloes = self.loadHalos()
             haloMass = haloes['GroupMass']
             StellarMass = haloes['SubhaloStellarMassInRadType']
             
@@ -143,7 +143,7 @@ class SimulationStacker(object):
             field = create_masked_field(self, halo_cat=haloes, pType=pType, nPixels=nPixels, projection=projection,
                                         save3D=True, load3D=load, base_path=base_path, dim=dim) # TODO: make save3D and load3D configurable
         else:
-            field = create_field(self, pType, nPixels, projection, dim=dim)
+            field = create_field(self, pType, nPixels, projection, dim=dim, load=load)
         
         if save:
             # TODO: Handle saving and loading of the fields for the masked case.
@@ -163,7 +163,7 @@ class SimulationStacker(object):
             z (float, optional): Redshift of the snapshot. Defaults to None, in which case self.z is used.
             # nPixels (int, optional): Number of pixels in each direction of the 2D map. Defaults to self.nPixels.
             projection (str, optional): Direction of the map projection. Currently only 'xy' is implemented. Defaults to 'xy'.
-            beamsize (float, optional): Size of the beam in arcminutes. Defaults to 1.6.
+            beamSize (float, optional): Size of the beam in arcminutes. Defaults to 1.6.
             save (bool, optional): If True, saves the map to a file. Defaults to False.
             load (bool, optional): If True, loads the map from a file if it exists and returns the map. Defaults to True.
             pixelSize (float, optional): The theoretical expected size of each pixel in arcminutes. Defaults to 0.5. arcminPerPixel overrides this to the exact size.
@@ -205,12 +205,12 @@ class SimulationStacker(object):
         
         # If we don't have the map pre-saved, we then make the map. 
         # Since this is before doing beam convolution, this step is fine to do using makeField.
-        map_ = self.makeField(pType, nPixels=nPixels, projection=projection, save=False, load=load, 
+        map_ = self.makeField(pType, nPixels=nPixels, projection=projection, save=saveField, load=load, 
                               mask=mask, maskRad=maskRad, base_path=base_path)
 
-        # Convolve the map with a Gaussian beam (only if beamsize is not None)
-        if beamsize is not None:
-            map_ = fft_smoothed_map(map_, beamsize, pixel_size_arcmin=arcminPerPixel)
+        # Convolve the map with a Gaussian beam (only if beamSize is not None)
+        if beamSize is not None:
+            map_ = fft_smoothed_map(map_, beamSize, pixel_size_arcmin=arcminPerPixel)
 
         if save:
             save_data(map_, self.simType, self.sim_index, pType, nPixels, 
@@ -290,12 +290,14 @@ class SimulationStacker(object):
             radDistance (float, optional): Radial distance units for stacking. Defaults to 1 arcmin.
                 Note there is no None option here as in stackField.
             pixelSize (float, optional): Size of each pixel in arcminutes. Defaults to 0.5.
-            halo_mass_avg (float, optional): Average halo mass for selecting halos. Defaults to 10**(13.22).
-            halo_mass_upper (float, optional): Upper mass bound for selecting halos. Defaults to None.
+            beamSize (float, optional): Size of the Gaussian beam in arcminutes, defaults to 1.6. If None, no beam convolution is applied.
             mask (bool, optional): If True, masks out areas outside of haloes in the map. Defaults to False.
             maskRad (float, optional): Number of virial radii around each halo to keep unmasked. Only used if mask=True.
                 Defaults to 3x virial radii.
             subtract_mean (bool, optional): If True, subtracts the mean of the map before stacking. Defaults to False.
+            use_subhalos (bool, optional): If True, uses subhalos in the stacking process. Defaults to False.
+            halo_mass_avg (float, optional): Average halo mass for selecting halos. Defaults to 10**(13.22).
+            halo_mass_upper (float, optional): Upper mass bound for selecting halos. Defaults to None.
 
         Returns:
             radii, profiles: Stacked radial profiles (2D) and their corresponding radii (1D).
@@ -309,7 +311,7 @@ class SimulationStacker(object):
             z = self.z
         
         # Load or create the map
-        fieldKey = (pType, z, projection, pixelSize)
+        fieldKey = (pType, z, projection, pixelSize, beamSize)
         if not (fieldKey in self.maps and self.maps[fieldKey] is not None):
             self.maps[fieldKey] = self.makeMap(pType, projection=projection,
                                                save=save, load=load, pixelSize=pixelSize, mask=mask, maskRad=maskRad)
@@ -337,7 +339,7 @@ class SimulationStacker(object):
         if subtract_mean:
             self.maps[fieldKey] += map_mean
 
-       # Unit Conversion specific to SZ maps:
+        # Unit Conversion specific to SZ maps:
         T_CMB = 2.7255
         if pType == 'tau':
             # In the case of the tau field, we want to do unit conversion from optical depth units to micro-Kelvin.
@@ -370,7 +372,7 @@ class SimulationStacker(object):
 
         Args:
             pType (str): Particle Type. One of 'gas', 'DM', or 'Stars'
-            filterType (str, optional): Stacked Filter Types. One of ['cumulative', 'CAP', 'DSigma']. Defaults to 'cumulative'.
+            filterType (str, optional): Stacked Filter Types. One of ['cumulative', 'CAP', 'DSigma', 'upsilon', 'ringring']. Defaults to 'cumulative'.
             minRadius (float, optional): Minimum radius in kpc/h for the stacking. Defaults to 0.1.
             maxRadius (float, optional): Maximum radius in kpc/h for the stacking. Defaults to 4.5.
             numRadii (int, optional): Number of radial bins for the stacking. Defaults to 25.
@@ -384,7 +386,9 @@ class SimulationStacker(object):
             maskRad (float, optional): Number of virial radii around each halo to keep unmasked. Only used if mask=True. 
                 Defaults to 3x virial radii.
             subtract_mean (bool, optional): If True, subtracts the mean of the field before stacking. Defaults to False.
-
+            use_subhalos (bool, optional): If True, uses subhalos in the stacking. Defaults to False.
+            halo_mass_avg (float, optional): Average halo mass for subhalo selection. Defaults to 10^(13.22).
+            halo_mass_upper (float, optional): Upper halo mass limit for subhalo selection. Defaults to 5*10^(14).
         Raises:
             NotImplementedError: If pType is not one of the ones listed above.
 
@@ -406,7 +410,7 @@ class SimulationStacker(object):
 
         # Handle radDistance = None case
         if radDistance is None:
-            haloes = self.loadHalos(self.simType)
+            haloes = self.loadHalos()
             mass_min, mass_max, _ = halo_ind(2)
             halo_mask = np.where(np.logical_and((haloes['GroupMass'] > mass_min), (haloes['GroupMass'] < mass_max)))[0]
             radDistance = haloes['GroupRad'][halo_mask].mean()
@@ -450,7 +454,7 @@ class SimulationStacker(object):
 
         Args:
             array (np.ndarray): 2D array to stack on. Requires shape (nPixels, nPixels) such that the array is square.
-            filterType (str, optional): Stacked Filter Types. One of ['cumulative', 'CAP', 'DSigma']. Defaults to 'cumulative'.
+            filterType (str, optional): Stacked Filter Types. One of ['cumulative', 'CAP', 'DSigma', 'upsilon', 'ringring']. Defaults to 'cumulative'.
             minRadius (float, optional): Minimum radius for stacking. Defaults to 0.1.
             maxRadius (float, optional): Maximum radius for stacking. Defaults to 4.5.
             numRadii (int, optional): Number of radial bins for stacking. Defaults to 25.
@@ -502,9 +506,13 @@ class SimulationStacker(object):
             filterFunc = total_mass
         elif filterType == 'CAP':
             filterFunc = CAP
+        elif filterType == 'ringring':
+            filterFunc = CAP_ringring
         elif filterType == 'DSigma':
             filterFunc = delta_sigma_kernel
             # filterFunc = delta_sigma_ring
+        elif filterType == 'upsilon':
+            filterFunc = upsilon
         elif filterType == 'DSigma_mccarthy':
             filterFunc = delta_sigma_mccarthy
             if radDistanceUnits != 'arcmin':
@@ -598,16 +606,16 @@ class SimulationStacker(object):
     
     @staticmethod
     def cutout_2d_periodic(array, center, length):
-        """
-        Returns a square cutout from a 2D array with periodic boundary conditions.
-    
-        Parameters:
-        - array: 2D numpy array
-        - center: tuple (x, y) center index
-        - length: float or int, half-width of the cutout (will be rounded)
-    
+        """Extract a square cutout from a 2D array with periodic boundary conditions.
+
+        Args:
+            array (np.ndarray): 2D input array.
+            center (tuple): (x, y) center pixel coordinates for the cutout.
+            length (float or int): Half-width of the cutout in pixels.
+                Rounded to the nearest integer.
+
         Returns:
-        - 2D numpy array cutout of shape (2*length+1, 2*length+1)
+            np.ndarray: Square cutout, shape (2*length+1, 2*length+1).
         """
         length = int(round(length))
         x, y = center
@@ -624,9 +632,17 @@ class SimulationStacker(object):
     
     @staticmethod
     def radial_distance_grid(array, bounds):
-        """
-        array: 2D numpy array (only shape is used)
-        bounds: tuple ((x_min, x_max), (y_min, y_max)) representing physical bounds
+        """Create a 2D radial distance grid centred at (0, 0) in physical coordinates.
+
+        Args:
+            array (np.ndarray): 2D array whose shape (rows, cols) defines the
+                grid resolution (only shape is used).
+            bounds (tuple): (xy_min, xy_max) physical coordinate range applied
+                equally to both axes (e.g. in kpc/h or virial radii).
+
+        Returns:
+            np.ndarray: 2D array of radial distances from (0, 0), same shape
+                as array.
         """
         rows, cols = array.shape
         xy_min, xy_max = bounds
@@ -653,7 +669,17 @@ class SimulationStacker(object):
                      header=self.header)
 
     def loadSubsets(self, pType, keys=None):
-        """Load particle subsets for the specified particle type."""
+        """Load particle data for the specified type from the full snapshot.
+
+        Args:
+            pType (str): Particle type, e.g. 'gas', 'DM', 'Stars', 'BH'.
+            keys (list, optional): Specific fields to load, e.g.
+                ['Coordinates', 'Masses']. Defaults to None (uses defaults
+                from loadIO based on pType).
+
+        Returns:
+            dict: Particle data arrays keyed by field name.
+        """
         return load_subsets(self.simPath, self.snapshot, self.simType, pType,
                           header=self.header, keys=keys)
 
@@ -662,9 +688,33 @@ class SimulationStacker(object):
         return load_subset(self.snap_Path, pType, 
                           header=self.header, keys=keys)
 
-    def loadData(self, pType, nPixels=None, projection='xy', type='field', 
+    def loadData(self, pType, nPixels=None, projection='xy', type='field',
                  mask=False, maskRad=3.0, base_path=None, dim='2D'):
-        """Load a precomputed field or map from file."""
+        """Load a cached field or map from file.
+
+        Args:
+            pType (str): Particle type identifier.
+            nPixels (int, optional): Number of pixels per side. Defaults to
+                self.nPixels.
+            projection (str, optional): Projection direction, one of
+                ['xy', 'xz', 'yz']. Defaults to 'xy'.
+            type (str, optional): Data type, one of ['field', 'map'].
+                Defaults to 'field'.
+            mask (bool, optional): If True, load the masked version.
+                Defaults to False.
+            maskRad (float, optional): Mask radius scale used in filename.
+                Defaults to 3.0.
+            base_path (str, optional): Base directory for cached files.
+                Defaults to None (uses /pscratch/ default).
+            dim (str, optional): Dimensionality, one of ['2D', '3D'].
+                Defaults to '2D'.
+
+        Returns:
+            np.ndarray: Cached field or map.
+
+        Raises:
+            ValueError: If the file does not exist.
+        """
         if nPixels is None:
             nPixels = self.nPixels
         return load_data(self.simType, self.sim_index, pType, nPixels, projection, type, 

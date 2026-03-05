@@ -129,41 +129,41 @@ def ksz_from_delta_sigma(
     cov_delta_sigma = None,   # optional covariance on ΔΣ
     return_tau = False,
 ):
-    """
-    Convert weak-lensing ΔΣ(R) to kSZ ΔT(R) in μK assuming Σ_gas = f_b * ΔΣ_phys
-    with f_b = Ω_b / Ω_m and fully ionized gas.
+    """Convert weak-lensing ΔΣ(R) to kSZ ΔT(R) in μK.
 
-    Parameters
-    ----------
-    delta_sigma : astropy.units.Quantity
-        ΔΣ (mass surface density), any mass/area unit (e.g., 200 * u.Msun/u.pc**2).
-    z_l : float
-        Lens redshift (only used if `delta_sigma_is_comoving=True`).
-    v_los : Quantity, default 300 km/s
-        Electron-weighted LOS peculiar velocity (sign convention: +away gives -ΔT).
-    cosmology : astropy.cosmology instance
-        Cosmology to use for T_CMB, Ω_b and Ω_m.
-d    mu_e : float, default 1.14
-        Mean molecular weight per free electron.
-    delta_sigma_is_comoving : bool
-        If True, convert ΔΣ_com → ΔΣ_phys by multiplying by (1+z_l)^2.
-    cov_delta_sigma : None or array-like or astropy Quantity
-        Optional covariance matrix for ΔΣ. If a Quantity, its unit should be (mass/area)^2.
-        If comoving, the code multiplies it by (1+z_l)^4 to convert to physical units.
-    return_tau : bool
-        If True, also return τ (per element) implied by f_b * ΔΣ.
+    Assumes Σ_gas = f_b * ΔΣ_phys with f_b = Ω_b / Ω_m and fully ionized gas.
 
-    Returns
-    -------
-    dT_muK : np.ndarray or float
-        kSZ temperature in μK (same shape as `delta_sigma`).
-    tau : np.ndarray or float, optional
-        Optical depth (returned if `return_tau=True`).
-    cov_dT_muK : np.ndarray, optional
-        Covariance in μK^2 (returned if `cov_delta_sigma` is not None).
-        
-    TODO:
-    Check the correctness of the unit handling in the covariance propagation.
+    Args:
+        delta_sigma (astropy.units.Quantity): ΔΣ (mass surface density) with
+            any mass/area unit (e.g. 200 * u.Msun/u.pc**2).
+        z_l (float): Lens redshift. Used only if delta_sigma_is_comoving=True.
+        v_los (astropy.units.Quantity, optional): Electron-weighted LOS peculiar
+            velocity. Sign convention: positive (away from observer) gives
+            negative ΔT. Defaults to 300 km/s.
+        cosmology (astropy.cosmology, optional): Cosmology for T_CMB, Ω_b, Ω_m.
+            Defaults to Planck18.
+        mu_e (float, optional): Mean molecular weight per free electron.
+            Defaults to 1.14.
+        delta_sigma_is_comoving (bool, optional): If True, converts
+            ΔΣ_com → ΔΣ_phys by multiplying by (1+z_l)^2. Defaults to False.
+        cov_delta_sigma (array-like or astropy.units.Quantity, optional):
+            Covariance matrix for ΔΣ, shape (N, N). If a Quantity, unit should
+            be (mass/area)^2. If comoving, multiplied by (1+z_l)^4 to convert
+            to physical units. Defaults to None.
+        return_tau (bool, optional): If True, also return τ (optical depth)
+            implied by f_b * ΔΣ. Defaults to False.
+
+    Returns:
+        float or np.ndarray: kSZ temperature in μK, same shape as delta_sigma.
+            If return_tau=True and/or cov_delta_sigma is not None, returns a
+            tuple of (dT_muK, [tau], [cov_dT_muK]) in that order.
+
+    Raises:
+        TypeError: If delta_sigma is not an astropy Quantity.
+        ValueError: If cov_delta_sigma shape does not match delta_sigma.
+
+    Note:
+        TODO: Check correctness of unit handling in covariance propagation.
     """
     T_CMB = cosmology.Tcmb0
     # T_CMB = 2.7255 * u.K  # FIRAS/Planck normalization

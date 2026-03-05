@@ -1,0 +1,99 @@
+# ratios_3x2_z05.yaml
+# ====================
+# Configuration for make_ratios3x2.py
+#
+# Produces a 3×2 figure of particle-type fraction profiles normalised by the
+# cosmic baryon fraction (OmegaBaryon / OmegaMatter).
+#
+#   Top row    : TNG suite  (TNG50-1, TNG100-1, TNG300-1, Illustris-1)
+#   Bottom row : SIMBA suite
+#
+#   Col 0  : 3D spherical profiles        (radius in comoving kpc/h)
+#   Col 1  : 2D projected, cumulative     (radius in arcmin)
+#   Col 2  : 2D projected, CAP filter     (radius in arcmin)
+
+stack:
+  # Redshift of the simulation snapshot targeted
+  redshift: 0.26
+
+  # Projection axis for the 2D maps and 3D field construction
+  projection: 'yz'         # options: 'xy', 'xz', 'yz'
+
+  # I/O caching: load pre-computed fields/stacks when available
+  load_field: true
+  save_field: true
+
+  # Whether to subtract the field mean before stacking
+  subtract_mean: false
+
+  # Particle types: fraction plotted is particle_type / particle_type_2
+  # Change these to produce different fraction figures, e.g. 'tau' / 'total',
+  # 'star' / 'total', 'baryon' / 'total', etc.
+  particle_type:   'ionized_gas'
+  # particle_type:   'baryon'
+  particle_type_2: 'total'
+
+  # ------------------------------------------------------------------
+  # Column 0 — 3D spherical profile parameters
+  # ------------------------------------------------------------------
+  n_pixels:      1000     # pixels per side for the 3D density field
+  min_radius_3d: 200.0    # innermost radial bin (comoving kpc/h)
+  max_radius_3d: 4000.0   # outermost radial bin (comoving kpc/h)
+  num_radii_3d:  11       # number of radial bins
+
+  # Halo mass selection (applied to all three columns)
+  halo_mass_min: 1.665e13   # lower bound in Msun  (~10^13.22)
+  halo_mass_max: 5.0e14     # upper bound in Msun  (null to disable)
+
+  # ------------------------------------------------------------------
+  # Columns 1 & 2 — 2D projected profile parameters
+  # ------------------------------------------------------------------
+  pixel_size:    0.5      # map pixel size (arcmin)
+  min_radius_2d: 1.0      # innermost radial bin (arcmin, before rad_distance scaling)
+  max_radius_2d: 10.0     # outermost radial bin (arcmin, before rad_distance scaling)
+  num_radii_2d:  11       # number of radial bins
+  rad_distance:  1.0      # multiplicative scaling applied to arcmin radii in plots
+
+  # Column 1: filter applied to numerator and denominator when stacking in 2D
+  filter_type_col1:   'cumulative'   # options: 'CAP', 'cumulative', 'DSigma', 'upsilon'
+  filter_type_2_col1: 'cumulative'
+
+  # Column 2: CAP aperture filter
+  filter_type_col2:   'CAP'
+  filter_type_2_col2: 'CAP'
+
+
+plot:
+  fig_path: '../figures/'
+  fig_name: 'ratios_3x2_yz'    # output file will be named <fig_name>_<particle_type>.pdf
+  fig_type: 'pdf'
+  plot_error_bars: true
+
+
+simulations:
+  # ----------------------------------------------------------------
+  # TNG suite — placed in the top row of the figure
+  # ----------------------------------------------------------------
+  - sim_type: 'IllustrisTNG'
+    sims:
+      # - name: 'TNG50-1'
+        # snapshot: 67
+      # - name: 'TNG100-1'
+      #   snapshot: 67
+      # - name: 'TNG300-1'
+      #   snapshot: 67
+      - name: 'TNG300-2'
+        snapshot: 80
+      - name: 'Illustris-1'
+        snapshot: 116
+      # - name: 'Illustris-2'
+      #   snapshot: 103
+
+  # ----------------------------------------------------------------
+  # SIMBA suite — placed in the bottom row of the figure
+  # ----------------------------------------------------------------
+  - sim_type: 'SIMBA'
+    sims:
+      - name: 'm100n1024'
+        snapshot: 136
+        feedback: 's50'

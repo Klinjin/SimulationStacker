@@ -1,0 +1,49 @@
+simulation:
+  redshift: 0.5
+  redshift_str: '0.5'
+  sim_type: 'IllustrisTNG'
+  sim_name: 'TNG300-1'
+  snapshot: 67
+  particle_type: 'total'
+  nPixels: 1000
+  n_vir: 1.0
+
+plot:
+  fig_path: '../../figures/'
+  fig_name: 'TNG300_PowerSpectra'
+  fig_type: 'pdf'
+
+
+simulations:
+  - sim_type: 'SIMBA'
+    sims:
+      - name: 'm50n512'
+        snapshot: 125
+        feedback: 's50'
+      - name: 'm50n512'
+        snapshot: 125
+        feedback: 's50noagn'
+      - name: 'm50n512'
+        snapshot: 125
+        feedback: 's50nox'
+      - name: 'm50n512'
+        snapshot: 125
+        feedback: 's50nojet'
+      - name: 'm50n512'
+        snapshot: 125
+        feedback: 's50nofb'
+      - name: 'm100n1024'
+        snapshot: 125
+        feedback: 's50'
+  - sim_type: 'IllustrisTNG'
+    sims:
+      - name: 'TNG100-1'
+        snapshot: 67
+      # - name: 'TNG300-1'
+      #   snapshot: 67
+      # - name: 'TNG300-2'
+      #   snapshot: 67
+      # - name: 'Illustris-1'
+      #   snapshot: 103
+      # - name: 'Illustris-2'
+      #   snapshot: 103

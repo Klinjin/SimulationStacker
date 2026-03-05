@@ -40,15 +40,21 @@ class SZMapStacker(SimulationStacker):
                  simType='IllustrisTNG', 
                  feedback=None, # Only for SIMBA
                  z=0.0):
-        """Initialize the SZMapStacker.
+        """Initialize the SZMapStacker subclass.
+
+        Deprecated: Use SimulationStacker directly with particle types 'tSZ',
+        'kSZ', or 'tau' for new work.
 
         Args:
-            sim (str): The simulation name.
-            snapshot (int): The snapshot number.
-            SZ (str): The SZ map type. Either 'tSZ', 'kSZ', or 'tau'.
-            nPixels (int, optional): The number of pixels in the map. Defaults to 2000.
-            simType (str, optional): The type of simulation. Defaults to 'IllustrisTNG'.
-            feedback (_type_, optional): Feedback mechanism. Defaults to None.
+            sim (str): Simulation name (e.g. 'TNG300-1', 'm100n1024').
+            snapshot (int): Snapshot number in the simulation.
+            nPixels (int, optional): Number of pixels per side for projected
+                fields, shape (nPixels, nPixels). Defaults to 2000.
+            simType (str, optional): Simulation type, one of
+                ['IllustrisTNG', 'SIMBA']. Defaults to 'IllustrisTNG'.
+            feedback (str, optional): Feedback variant for SIMBA simulations,
+                e.g. 's50', 's50nox'. Ignored for IllustrisTNG. Defaults to None.
+            z (float, optional): Redshift of the snapshot. Defaults to 0.0.
         """
         # print('DEPRECIATED: Use SimulationStacker instead.')
         warnings.warn("DEPRECIATED: Use SimulationStacker instead.", DeprecationWarning)

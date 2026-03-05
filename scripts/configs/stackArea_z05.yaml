@@ -1,0 +1,79 @@
+# stackArea_z05.yaml
+# ------------------
+# Configuration for make_stackArea.py.
+# Produces a 2x3 combined baryon-fraction stacked-area figure at z=0.5.
+#   Top row    : 3-D stacking (x-axis in comoving kpc/h)
+#   Bottom row : 2-D map stacking (x-axis in arcmin)
+#   Columns    : TNG300-1  |  Illustris-1  |  SIMBA m100n1024
+
+stack:
+  redshift: 0.5
+
+  # Cache behaviour: load pre-computed fields/maps from disk when available,
+  # and save newly computed ones for future runs.
+  load_field: true
+  save_field: true
+
+  # Stacking radii expressed in comoving kpc/h.
+  # For 2D runs these are automatically converted to arcmin via the cosmology.
+  min_radius: 200.0    # comoving kpc/h
+  max_radius: 6000.0   # comoving kpc/h
+  num_radii: 15        # number of linearly-spaced radial bins
+
+  # Overall multiplicative scale for the plotted x-axis values (set to 1 for
+  # no scaling).
+  rad_distance: 1.0
+
+  # 3-D field resolution: number of voxels per side of the cubic grid.
+  n_pixels: 1000
+
+  # 2-D map settings
+  pixel_size: 0.5   # arcmin per pixel in 2-D projected maps
+  beam_size: 1.6    # arcmin FWHM Gaussian smoothing applied before 2-D stacking
+                    # (set to 0 to disable smoothing)
+
+  # Projection axis used both when building 3-D fields and when making 2-D maps.
+  projection: 'yz'  # options: 'xy', 'xz', 'yz'
+
+  # Filter type for the baryon-component maps (numerators).
+  filter_type: 'CAP'   # options: 'CAP', 'cumulative', 'DSigma', 'upsilon'
+  # Filter type for the total-mass map (denominator).
+  filter_type_2: 'CAP'
+  # Particle type used as the common total-mass denominator.
+  particle_type_2: 'total'
+
+  # Baryon components to decompose.  The stacked-area fraction of each is plotted
+  # separately, normalised by Omega_b / Omega_m.
+  baryon_types: ['ionized_gas', 'neutral_gas', 'Stars', 'BH']
+
+  # Halo masking (set mask_haloes: true to excise neighbouring haloes)
+  mask_haloes: false
+  mask_radii: 3.0    # Number of R200c radii to mask around each halo
+
+  # Subtract the mean field value before stacking (sometimes useful for 3-D runs)
+  subtract_mean: false
+
+
+plot:
+  fig_path: '../figures/'
+  fig_name: 'combined'
+  fig_type: 'pdf'
+  plot_error_bars: true
+
+
+# ---------------------------------------------------------------------------
+# Simulations — exactly three entries, rendered left-to-right in the figure.
+# ---------------------------------------------------------------------------
+simulations:
+  - sim_type: 'IllustrisTNG'
+    name: 'TNG300-1'
+    snapshot: 67        # z ≈ 0.5
+
+  - sim_type: 'IllustrisTNG'
+    name: 'Illustris-1'
+    snapshot: 103       # z ≈ 0.5
+
+  - sim_type: 'SIMBA'
+    name: 'm100n1024'
+    snapshot: 125       # z ≈ 0.5
+    feedback: 's50'

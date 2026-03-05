@@ -8,12 +8,12 @@ stack:
   particle_type: 'gas'
   projection: 'yz' # 'xy', 'xz', 'yz'
   pixel_size: 0.5 # in arcmin
-  particle_type_2: 'DM'
+  particle_type_2: 'total'
   subtract_mean: false
   n_pixels: 1000
   halo_mass_avg: 1.6595869074377206e+13
   halo_mass_upper: 500000000000000.
-  min_radius: 1.0
+  min_radius: 0.0
   max_radius: 6.0
   num_radii: 9
 
@@ -21,7 +21,7 @@ plot:
   plot_data: false
   data_path: '../data/Fig1_Fig8_dr10_allfoot_perbin_dr6_pzbin1.npz'
   data_label: 'Hadzhiyska 2024 pz1'
-  fig_path: '../figures/2025-11/'
+  fig_path: '../figures/'
   fig_name: 'ratios_yz'
   fig_type: 'pdf'
   plot_error_bars: true

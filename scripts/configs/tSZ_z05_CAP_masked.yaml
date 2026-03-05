@@ -14,11 +14,11 @@ stack:
 plot:
   plot_data: true
   # data_path: '../data/Fig1_Fig8_dr10_allfoot_perbin_dr6_pzbin1.npz'
-  data_path: '../data/fig4.csv'
+  data_path: '../data/tSZ/fig4.csv'
   data_label: 'Liu 2025 pz1 (ACT DR6 Fiducial)'
-  fig_path: '../figures/2025-10/10-29/'
+  fig_path: '../figures/'
   fig_name: 'profiles_xz_masked'
-  fig_type: 'png'
+  fig_type: 'pdf'
   plot_error_bars: true
   yscale: 'linear'
 
@@ -27,21 +27,21 @@ plot:
 simulations:
   - sim_type: 'SIMBA'
     sims:
-      - name: 'm50n512'
-        snapshot: 125
-        feedback: 's50'
-      - name: 'm50n512'
-        snapshot: 125
-        feedback: 's50noagn'
-      - name: 'm50n512'
-        snapshot: 125
-        feedback: 's50nox'
-      - name: 'm50n512'
-        snapshot: 125
-        feedback: 's50nojet'
-      - name: 'm50n512'
-        snapshot: 125
-        feedback: 's50nofb'
+      # - name: 'm50n512'
+      #   snapshot: 125
+      #   feedback: 's50'
+      # - name: 'm50n512'
+      #   snapshot: 125
+      #   feedback: 's50noagn'
+      # - name: 'm50n512'
+      #   snapshot: 125
+      #   feedback: 's50nox'
+      # - name: 'm50n512'
+      #   snapshot: 125
+      #   feedback: 's50nojet'
+      # - name: 'm50n512'
+      #   snapshot: 125
+      #   feedback: 's50nofb'
       - name: 'm100n1024'
         snapshot: 125
         feedback: 's50'
@@ -55,5 +55,5 @@ simulations:
         # snapshot: 67
       - name: 'Illustris-1'
         snapshot: 103
-      # - name: 'Illustris-2'
-        # snapshot: 103
+      - name: 'Illustris-2'
+        snapshot: 103

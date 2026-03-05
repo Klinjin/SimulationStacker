@@ -33,6 +33,7 @@ import illustris_python as il # type: ignore
 import yaml
 import argparse
 from pathlib import Path
+from datetime import datetime
 
 
 # --- NEW: set default font to Computer Modern (with fallbacks) and increase tick fontsize ---
@@ -87,8 +88,13 @@ def main(path2config, verbose=True):
     pixelSize = stack_config.get('pixel_size', 0.5) # in arcmin
 
     # Plotting parameters
-    figPath = Path(plot_config.get('fig_path'))
-    figPath.mkdir(parents=False, exist_ok=True)
+    # get the datetime for file naming
+    now = datetime.now()
+    yr_string = now.strftime("%Y-%m")
+    dt_string = now.strftime("%m-%d")
+
+    figPath = Path(plot_config.get('fig_path')) / yr_string / dt_string
+    figPath.mkdir(parents=True, exist_ok=True)
     plotErrorBars = plot_config.get('plot_error_bars', True)
     figName = plot_config.get('fig_name', 'default_figure')
     figType = plot_config.get('fig_type', 'pdf')
@@ -97,7 +103,7 @@ def main(path2config, verbose=True):
     colourmaps = ['hsv', 'twilight']
 
     # Create (2, 4) subplots: top row for TNG, bottom row for SIMBA
-    fig, axes = plt.subplots(2, 4, figsize=(20, 10), sharex=True, sharey=True)
+    fig, axes = plt.subplots(2, 4, figsize=(18, 9), sharex=True, sharey=True)
     
     # Define mask configurations: [maskRadii=1, 2, 3, False]
     mask_configs = [
@@ -132,7 +138,10 @@ def main(path2config, verbose=True):
                 colours = colourmap(np.linspace(0.2, 0.85, len(TNG_sims)))
             elif sim_type_name == 'SIMBA':
                 SIMBA_sims = sim_type['sims']
-                colours = colourmap(np.linspace(0.2, 0.85, len(SIMBA_sims)))
+                if len(SIMBA_sims) > 1:
+                    colours = colourmap(np.linspace(0.2, 0.85, len(SIMBA_sims)))
+                else:
+                    colours = colourmap(np.linspace(0.2, 0.85, 6))[-1:] # Use the last color if only one SIMBA sim, otherwise generate a range of colors
             else:
                 raise ValueError(f"Unknown simulation type: {sim_type_name}")
 
@@ -159,7 +168,7 @@ def main(path2config, verbose=True):
                         # Use IllustrisTNG cosmology for plot later.
                         cosmo = FlatLambdaCDM(H0=100 * stacker.header['HubbleParam'], Om0=stacker.header['Omega0'], Tcmb0=2.7255 * u.K, Ob0=OmegaBaryon)
                         
-                        haloes = stacker.loadHalos(stacker.simType)
+                        haloes = stacker.loadHalos()
                         haloMass = haloes['GroupMass']
                         
                         halo_mask = select_massive_halos(haloMass, 10**(13.22), 5e14) # TODO: make this configurable from user input
@@ -283,7 +292,7 @@ def main(path2config, verbose=True):
     fig.savefig(figPath / f'{pType}_{figName}_z{redshift}_masking_comparison.{figType}', dpi=300) # type: ignore
     plt.close(fig)
     
-    print('Done!!!')
+    print('Done!!! time taken = ', time.time() - t0, ' seconds')
 
 if __name__ == "__main__":
     

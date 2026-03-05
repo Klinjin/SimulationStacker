@@ -1,21 +1,37 @@
 stack:
   redshift: 0.5
-  filter_type: 'CAP' # Options: 'CAP', 'cumulative', 'DSigma
+  filter_type: 'ringring' # Options: 'CAP', 'cumulative', 'DSigma', 'upsilon', 'ringring'
   # filter_type: 'cumulative' # Options: 'CAP', 'cumulative', 'DSigma
+
   load_field: true
-  save_field: false
+  save_field: true
+  
+  min_radius: 2.0 # in arcmin
+  max_radius: 6.0 # in arcmin
+  num_radii: 9 # Number of radial bins between min_radius and max_radius
   rad_distance: 1.0 # in arcmin
-  particle_type: 'tSZ'
+
+  pixel_size: 0.5 # in arcmin
   projection: 'xy' # 'xy', 'xz', 'yz'
+  particle_type: 'tSZ'
+
   mask_haloes: false
   mask_radii: 3.0 # Number of virial radii to mask out for haloes. In units of R200c
-  pixel_size: 0.5 # in arcmin
 
 plot:
   plot_data: true
-  data_path: '../data/fig4.csv'
-  data_label: 'Liu 2025 pz1 (ACT DR6 Fiducial)'
-  fig_path: '../figures/2025-10/test3/'
+
+  # data_path: '../data/tSZ/fig4.csv'
+  # rad_key: 'RApArcmin'
+  # data_key: 'pz1_act_dr6_fiducial'
+  # data_label: 'Liu 2025 pz1 (ACT DR6 Fiducial)'
+
+  data_path: '../data/tSZ/fig15.csv'
+  rad_key: 'radii'
+  data_key: 'DESI_pz1_act_dr5_f90_ringring2'
+  data_label: 'Liu 2025 Fig.15 f90'
+
+  fig_path: '../figures/'
   fig_name: 'profiles_xy'
   fig_type: 'pdf'
   plot_error_bars: true
@@ -26,21 +42,21 @@ plot:
 simulations:
   - sim_type: 'SIMBA'
     sims:
-      - name: 'm50n512'
-        snapshot: 125
-        feedback: 's50'
-      - name: 'm50n512'
-        snapshot: 125
-        feedback: 's50noagn'
-      - name: 'm50n512'
-        snapshot: 125
-        feedback: 's50nox'
-      - name: 'm50n512'
-        snapshot: 125
-        feedback: 's50nojet'
-      - name: 'm50n512'
-        snapshot: 125
-        feedback: 's50nofb'
+      # - name: 'm50n512'
+      #   snapshot: 125
+      #   feedback: 's50'
+      # - name: 'm50n512'
+      #   snapshot: 125
+      #   feedback: 's50noagn'
+      # - name: 'm50n512'
+      #   snapshot: 125
+      #   feedback: 's50nox'
+      # - name: 'm50n512'
+      #   snapshot: 125
+      #   feedback: 's50nojet'
+      # - name: 'm50n512'
+      #   snapshot: 125
+      #   feedback: 's50nofb'
       - name: 'm100n1024'
         snapshot: 125
         feedback: 's50'
@@ -50,7 +66,9 @@ simulations:
         snapshot: 67
       - name: 'TNG300-1'
         snapshot: 67
-      - name: 'TNG300-2'
-        snapshot: 67
-      - name: 'Illustris-2'
+      # - name: 'TNG300-2'
+      #   snapshot: 67
+      - name: 'Illustris-1'
         snapshot: 103
+      # - name: 'Illustris-2'
+      #   snapshot: 103

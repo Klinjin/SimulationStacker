@@ -2,8 +2,14 @@ import numpy as np
 import time
 
 def precompute_offsets_3d(radius):
-    """
-    Precompute relative (dz, dy, dx) offsets within a sphere of the given radius.
+    """Precompute relative (dz, dy, dx) offsets within a sphere of the given radius.
+
+    Args:
+        radius (float): Sphere radius in voxel units.
+
+    Returns:
+        np.ndarray: Offset array of shape (N, 3). Each row is (dz, dy, dx).
+            All offsets satisfy dz^2 + dy^2 + dx^2 <= radius^2.
     """
     r = int(np.ceil(radius))
     dz, dy, dx = np.meshgrid(
@@ -17,16 +23,19 @@ def precompute_offsets_3d(radius):
     return np.stack((dz[mask], dy[mask], dx[mask]), axis=1)
 
 def get_cutout_mask_3d(array, centers, radii):
-    """
-    For each center and corresponding radius, return a boolean mask of valid 3D indices within that radius.
+    """Create a 3D boolean mask indicating voxels within specified radii of centers.
 
-    Parameters:
-        array (np.ndarray): The 3D array (shape used for bounds).
-        centers (List[Tuple[int, int, int]]): List of center coordinates (z, y, x).
-        radii (List[float]): List of radii (same length as centers).
+    Uses periodic boundary conditions (modulo wrap) on all three axes.
+
+    Args:
+        array (np.ndarray): 3D array whose shape defines the grid bounds,
+            shape (nz, ny, nx).
+        centers (list of tuple): Center coordinates (z, y, x) for each aperture.
+        radii (list of float): Radii in voxel units, one per center.
 
     Returns:
-        numpy.ndarray: Boolean mask of the same shape as the input array.
+        np.ndarray: Boolean mask with the same shape as array. True where
+            at least one center contributes a voxel within its radius.
     """
     _offset_cache = {}
     shape = np.array(array.shape)
@@ -47,16 +56,20 @@ def get_cutout_mask_3d(array, centers, radii):
     return mask
 
 def get_cutout_indices_3d(array, centers, radii):
-    """
-    For each center and corresponding radius, return a list of valid 3D indices within that radius.
+    """Return the 3D voxel indices within specified radii of each center.
 
-    Parameters:
-        array (np.ndarray): The 3D array (shape used for bounds).
-        centers (List[Tuple[int, int, int]]): List of center coordinates (z, y, x).
-        radii (List[float]): List of radii (same length as centers).
+    Uses periodic boundary conditions (modulo wrap) on all three axes.
+
+    Args:
+        array (np.ndarray): 3D array whose shape defines the grid bounds,
+            shape (nz, ny, nx).
+        centers (list of tuple): Center coordinates (z, y, x) for each aperture.
+        radii (list of float): Radii in voxel units, one per center.
 
     Returns:
-        List[np.ndarray]: List of arrays of indices for each center-radius pair.
+        list of np.ndarray: One array per center-radius pair. Each array has
+            shape (M_i, 3) where M_i is the voxel count within that radius.
+            Each row is a (z, y, x) voxel coordinate.
     """
     _offset_cache = {}
     shape = np.array(array.shape)
@@ -76,16 +89,16 @@ def get_cutout_indices_3d(array, centers, radii):
     return all_indices
 
 def sum_over_cutouts(array, all_indices):
-    """
-    Given a 3D array and a list of 3D index arrays, compute the sum of values
-    in the array for each set of indices.
+    """Compute the sum of array values within each set of provided 3D indices.
 
-    Parameters:
-        array (np.ndarray): The 3D input array.
-        all_indices (List[np.ndarray]): List of index arrays.
+    Args:
+        array (np.ndarray): 3D input array, shape (nz, ny, nx).
+        all_indices (list of np.ndarray): Index arrays, typically from
+            get_cutout_indices_3d. Each element has shape (M_i, 3).
 
     Returns:
-        np.ndarray: Array of summed values, one per index set.
+        np.ndarray: Summed values, shape (len(all_indices),). Element i
+            contains the sum of array values at the voxels in all_indices[i].
     """
     result = np.empty(len(all_indices), dtype=array.dtype)
     for i, inds in enumerate(all_indices):
@@ -95,8 +108,14 @@ def sum_over_cutouts(array, all_indices):
 
 
 def precompute_offsets_2d(radius):
-    """
-    Precompute relative (dy, dx) offsets within a circle of the given radius.
+    """Precompute relative (dy, dx) offsets within a circle of the given radius.
+
+    Args:
+        radius (float): Circle radius in pixel units.
+
+    Returns:
+        np.ndarray: Offset array of shape (N, 2). Each row is (dy, dx).
+            All offsets satisfy dy^2 + dx^2 <= radius^2.
     """
     r = int(np.floor(radius))
     dy, dx = np.meshgrid(
@@ -109,17 +128,24 @@ def precompute_offsets_2d(radius):
     return np.stack((dy[mask], dx[mask]), axis=1)
 
 def get_cutout_mask_2d(array, centers, radii):
-    """
-    For each center and radius, return a flat list of unique valid 2D indices within that radius.
+    """Create a 2D boolean mask indicating pixels within specified radii of centers.
 
-    Parameters:
-        array (np.ndarray): The 2D array (shape used for bounds).
-        centers (List[Tuple[int, int]]): List of center coordinates (row, col).
-        radii (List[float]): List of radii (same length as centers).
+    Uses hard boundary conditions; pixels outside array bounds are excluded
+    (no periodic wrapping).
+
+    Args:
+        array (np.ndarray): 2D array whose shape defines the pixel grid bounds,
+            shape (ny, nx).
+        centers (list of tuple): Center coordinates (row, col) for each aperture.
+        radii (list of float): Radii in pixel units, one per center.
 
     Returns:
-        DEPRECIATED - List[Tuple[int, int]]: Flat list of all unique valid indices across all centers.
-        numpy.ndarray: Boolean mask of the same shape as the input array.
+        np.ndarray: Boolean mask with the same shape as array. True where
+            at least one center contributes a pixel within its radius.
+
+    Note:
+        Deprecated return value was a flat list of unique (row, col) indices.
+        Current return value is a boolean mask.
     """
     _offset_cache_2d = {}
     shape = np.array(array.shape)
