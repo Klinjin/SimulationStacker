@@ -25,7 +25,7 @@ import illustris_python as il
 sys.path.append('/pscratch/sd/l/lindajin/SimulationStacker/src/')
 # # from tools import numba_tsc_3D, hist2d_numba_seq
 from utils import fft_smoothed_map, comoving_to_arcmin, arcmin_to_comoving
-from halos import select_massive_halos, halo_ind, filter_edge_halo, select_abundance_subhalos
+from halos import select_massive_halos, halo_ind, filter_edge_halo
 from filters import total_mass, delta_sigma, CAP, CAP_ringring, CAP_from_mass, DSigma_from_mass, delta_sigma_mccarthy, delta_sigma_kernel, delta_sigma_ring, upsilon
 from loadIO import load_subhalos, snap_path, load_halos, load_subsets, load_subset, load_data, save_data
 from mapMaker import create_field, create_masked_field
@@ -152,7 +152,7 @@ class SimulationStacker(object):
 
         return field
 
-    def makeMap(self, pType, projection='xy', beamsize=1.6, save=False, load=True, 
+    def makeMap(self, pType, projection='xy', beamSize=1.6, save=False, load=True, 
                 pixelSize=0.5, mask=False, maskRad=3.0, base_path=None):
         """Make a 2D map convolved with a beam for a given particle type.
         This is more realistic than makeField
@@ -203,6 +203,18 @@ class SimulationStacker(object):
                 print(e)
                 print("Computing the map instead...")    
         
+        if beamSize == 0.0:
+            # Zero beamsize is same as None, so we just change it to None here.
+            beamSize = None
+
+        if (beamSize is None) and save:
+            print('Saving field instead of map, since beamSize is None.')
+            saveField = True
+            save = False # Don't save the map if we aren't convolving it, since it's just the same as the field.
+        else:
+            saveField = False
+            
+
         # If we don't have the map pre-saved, we then make the map. 
         # Since this is before doing beam convolution, this step is fine to do using makeField.
         map_ = self.makeField(pType, nPixels=nPixels, projection=projection, save=saveField, load=load, 
@@ -240,7 +252,7 @@ class SimulationStacker(object):
         
         return convolved_map
     
-    def setMap(self, pType, map_, z=None, projection='xy', pixelSize=0.5):
+    def setMap(self, pType, map_, projection='xy', pixelSize=0.5, beamSize=1.6):
         """Set a precomputed map for a given particle type.
 
         Args:
@@ -250,10 +262,7 @@ class SimulationStacker(object):
             projection (str, optional): Direction of the field projection. Defaults to 'xy'. Options are ['xy', 'yz', 'xz']
         """
 
-        if z is None:
-            z = self.z
-
-        self.maps[(pType, z, projection, pixelSize)] = map_
+        self.maps[(pType,projection, pixelSize, beamSize)] = map_
 
     def setField(self, pType, field_, nPixels=None, projection='xy'):
         """Set a precomputed field for a given particle type.
@@ -272,8 +281,8 @@ class SimulationStacker(object):
     
 
     def stackMap(self, pType, filterType='cumulative', minRadius=0.5, maxRadius=6.0, numRadii=11,
-                 z=None, projection='xy', save=False, load=True, radDistance=1.0, pixelSize=0.5, 
-                 halo_number_density=2.4e-3,halo_mass_avg=10**(13.22), halo_mass_upper=5*10**(14), mask=False, maskRad=3.0,
+                 z=None, projection='xy', save=False, load=True, radDistance=1.0, pixelSize=0.5, beamSize=1.6,
+                 halo_number_density=2.4e-3, halo_mass_upper=None, mask=False, maskRad=3.0,
                  subtract_mean=False):
         """Stack the map of a given particle type.
 
@@ -297,7 +306,7 @@ class SimulationStacker(object):
             subtract_mean (bool, optional): If True, subtracts the mean of the map before stacking. Defaults to False.
             use_subhalos (bool, optional): If True, uses subhalos in the stacking process. Defaults to False.
             halo_mass_avg (float, optional): Average halo mass for selecting halos. Defaults to 10**(13.22).
-            halo_mass_upper (float, optional): Upper mass bound for selecting halos. Defaults to None.
+            halo_mass_upper (float, optional): Upper mass bound for selecting halos. Defaults to 5*10**(14).
 
         Returns:
             radii, profiles: Stacked radial profiles (2D) and their corresponding radii (1D).
@@ -307,13 +316,10 @@ class SimulationStacker(object):
             Implement the DSigma filter for stacking.
         """
 
-        if z is None:
-            z = self.z
-        
         # Load or create the map
-        fieldKey = (pType, z, projection, pixelSize, beamSize)
+        fieldKey = (pType, projection, pixelSize, beamSize)
         if not (fieldKey in self.maps and self.maps[fieldKey] is not None):
-            self.maps[fieldKey] = self.makeMap(pType, projection=projection,
+            self.maps[fieldKey] = self.makeMap(pType, projection=projection, beamSize=beamSize,
                                                save=save, load=load, pixelSize=pixelSize, mask=mask, maskRad=maskRad)
 
         # If subtract_mean is True, subtract the mean of the map before stacking.
@@ -431,7 +437,7 @@ class SimulationStacker(object):
             radDistance=radDistance,
             radDistanceUnits='kpc/h',
             halo_number_density=halo_number_density
-        )
+            )
         
         # restore the mean if subtracted
         # TODO: this may introduce weird numerics behaviour, check later
@@ -449,7 +455,7 @@ class SimulationStacker(object):
 
     def stack_on_array(self, array, filterType='cumulative', minRadius=0.1, maxRadius=4.5, numRadii=25,
                        projection='xy', radDistance=1000.0, radDistanceUnits='kpc/h', 
-                       halo_number_density=2.4e-3, pixelSize=0.5):
+                       halo_number_density=2.4e-3, pixelSize=0.5, halo_mass_upper=None):
         """Abstract stacking function that works on any 2D array.
 
         Args:
@@ -479,10 +485,10 @@ class SimulationStacker(object):
         haloPos = haloes['SubhaloPos']
         subhaloStellarMass = haloes['SubhaloStellarMassInRadType']  # in 1e10 Msun/h
 
-        halo_mask = select_massive_halos(subhaloStellarMass, self.header['BoxSize'], halo_number_density)
+        halo_mask = select_massive_halos(subhaloStellarMass, self.header['BoxSize'], halo_number_density, halo_mass_upper)
         self.halo_mass_selected = haloMass[halo_mask]  # Store for reference
 
-        print(f'Number of halos selected: {halo_mask.shape[0]} at Mass threshold: {mass_list[0]: .2e} ~ {mass_list[-1]: .2e} Msun/h')
+        print(f'Number of halos selected: {halo_mask.shape[0]} at Mass threshold: {self.halo_mass_selected[0]: .2e} ~ {self.halo_mass_selected[-1]: .2e} Msun/h')
 
         # Convert radDistance to pixels based on units
         if radDistanceUnits == 'kpc/h':
@@ -680,7 +686,7 @@ class SimulationStacker(object):
         Returns:
             dict: Particle data arrays keyed by field name.
         """
-        return load_subsets(self.simPath, self.snapshot, self.simType, pType,
+        return load_subsets(self.sim_path, self.snapshot, self.simType, pType,
                           header=self.header, keys=keys)
 
     def loadSubset(self, pType, keys=None):

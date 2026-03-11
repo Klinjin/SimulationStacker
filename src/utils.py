@@ -411,6 +411,7 @@ def ksz_from_delta_sigma(
     z_l,
     v_los = 300 * u.km / u.s,
     cosmology = Planck18,
+    f_b = None,
     mu_e = 1.14,
     delta_sigma_is_comoving = False,
     cov_delta_sigma = None,   # optional covariance on ΔΣ
@@ -454,9 +455,12 @@ def ksz_from_delta_sigma(
     """
     T_CMB = cosmology.Tcmb0
     # T_CMB = 2.7255 * u.K  # FIRAS/Planck normalization
-    Omega_b = cosmology.Ob0
-    Omega_m = cosmology.Om0
-    
+
+    if f_b is None:
+        Omega_b = cosmology.Ob0
+        Omega_m = cosmology.Om0
+        f_b = Omega_b / Omega_m
+
     if not hasattr(delta_sigma, "unit"):
         raise TypeError("`delta_sigma` must be an astropy Quantity with mass/area units.")
 
@@ -464,8 +468,6 @@ def ksz_from_delta_sigma(
     ds_phys = delta_sigma * ((1.0 + z_l) ** 2 if delta_sigma_is_comoving else 1.0)
     ds_phys = ds_phys.to(u.kg / u.m**2)
 
-    # Constant gas fraction
-    f_b = Omega_b / Omega_m
 
     # Electron column and optical depth
     Sigma_gas = f_b * ds_phys                               # kg/m^2
