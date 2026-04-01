@@ -40,12 +40,19 @@ def select_binned_halos(halo_masses, ind):
     mask = (halo_masses > mass_min) & (halo_masses < mass_max)
     return np.where(mask)[0]
 
-def select_massive_halos(halo_masses, target_average_mass, upper_mass_bound=None):
-    """Select haloes such that the average mass of the selected halos meets the target average mass.
+def select_abundance_halos_mask(halo_masses, Boxsize, number_density, upper_mass_bound=None):
+    """Select subhalos by abundance matching to a target number density.
+
+    Sorts subhalos by the provided mass proxy in descending order and
+    selects the top N such that N / box_volume matches the target number
+    density.  The function is agnostic to the choice of mass proxy: any
+    monotonic observable can be passed, i.e. total bound stellar
+    mass.
 
     Args:
         halo_masses (array-like): Array of halo masses.
-        target_average_mass (float): Target average mass for the selected halos.
+        Boxsize (float): Size of the simulation box.
+        number_density (float): Target number density for the selected halos.
         upper_mass_bound (float, optional): Upper bound on halo mass. Defaults to None.
 
     Raises:

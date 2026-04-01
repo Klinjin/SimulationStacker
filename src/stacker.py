@@ -26,7 +26,7 @@ import illustris_python as il
 sys.path.append('/pscratch/sd/l/lindajin/SimulationStacker/src/')
 # # from tools import numba_tsc_3D, hist2d_numba_seq
 from utils import fft_smoothed_map, comoving_to_arcmin, arcmin_to_comoving
-from halos import select_massive_halos, halo_ind, filter_edge_halo
+from halos import select_abundance_halos_mask, halo_ind, filter_edge_halo
 from filters import total_mass, delta_sigma, CAP, CAP_ringring, CAP_from_mass, DSigma_from_mass, delta_sigma_mccarthy, delta_sigma_kernel, delta_sigma_ring, upsilon
 from loadIO import load_subhalos, snap_path, load_halos, load_subsets, load_subset, load_data, save_data
 from mapMaker import create_field, create_masked_field
@@ -137,7 +137,7 @@ class SimulationStacker(object):
             haloMass = haloes['GroupMass']
             StellarMass = haloes['SubhaloStellarMassInRadType']
             
-            halo_mask = select_massive_halos(StellarMass, self.header['BoxSize'], upper_mass_bound=10**(13.22), number_density=5e14) # TODO: make this configurable from user input
+            halo_mask = select_abundance_halos_mask(StellarMass, self.header['BoxSize'], upper_mass_bound=10**(13.22), number_density=5e14) # TODO: make this configurable from user input
             haloes['GroupMass'] = haloes['GroupMass'][halo_mask]
             haloes['GroupRad'] = haloes['GroupRad'][halo_mask] * maskRad # in kpc/h
             haloes['GroupPos'] = haloes['GroupPos'][halo_mask]
@@ -494,7 +494,7 @@ class SimulationStacker(object):
         haloPos = haloes['SubhaloPos']
         subhaloStellarMass = haloes['SubhaloStellarMassInRadType']  # in 1e10 Msun/h
 
-        halo_mask = select_massive_halos(subhaloStellarMass, self.header['BoxSize'], halo_number_density, halo_mass_upper)
+        halo_mask = select_abundance_halos_mask(subhaloStellarMass, self.header['BoxSize'], halo_number_density, halo_mass_upper)
         self.halo_mass_selected = haloMass[halo_mask]  # Store for reference
 
         print(f'Number of halos selected: {halo_mask.shape[0]} at Mass threshold: {self.halo_mass_selected[0]: .2e} ~ {self.halo_mass_selected[-1]: .2e} Msun/h')
