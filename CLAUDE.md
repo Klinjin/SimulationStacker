@@ -110,7 +110,7 @@ simulations:
   - sim_type: 'SIMBA'
     sims:
       - name: 'm100n1024'
-        snapshot: 136
+        snapshot: 125
         feedback: 's50'
 ```
 

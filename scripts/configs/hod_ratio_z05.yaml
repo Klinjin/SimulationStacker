@@ -1,0 +1,79 @@
+# hod_ratio_z05.yaml
+# ===================
+# Configuration for make_hod_ratio.py
+#
+# Produces a single-panel figure comparing two halo selection methods
+# for the stacked tau (optical depth) 2D CAP profile at z = 0.5:
+#
+#   ratio(R) = tau_CAP^{SHAM}(R)  /  tau_CAP^{mass-cut}(R)
+#
+# Simulations: TNG300-1 (snap 67), Illustris-1 (snap 103),
+#              SIMBA m100n1024 s50 (snap 125)
+
+stack:
+  # Redshift of the simulation snapshots targeted
+  redshift: 0.5
+
+  # Projection axis for the 2D map
+  projection: 'yz'          # options: 'xy', 'xz', 'yz'
+
+  # I/O caching: both halo selection methods share the same cached tau map
+  # because the underlying particle field is independent of halo selection.
+  load_field: true
+  save_field: true
+
+  # Do not subtract the field mean before stacking
+  subtract_mean: false
+
+  # Particle type and filter (CAP = Circular Aperture Profile)
+  particle_type: 'tau'
+  filter_type:   'CAP'      # options: 'CAP', 'cumulative', 'DSigma'
+
+  # 2D map parameters.
+  # Beam convolution uses the stackMap default of 1.6 arcmin (not exposed here).
+  pixel_size:   0.5         # map pixel size (arcmin)
+  min_radius:   1.0         # innermost radial bin (arcmin)
+  max_radius:   10.0        # outermost radial bin (arcmin)
+  num_radii:    11          # number of radial bins
+  rad_distance: 1.0         # multiplicative scaling applied to arcmin radii in plots
+
+  # ------------------------------------------------------------------
+  # Mass-cut halo selection  (use_subhalos=False in stackMap)
+  #   Routes to select_massive_halos(GroupMass, target_average_mass,
+  #                                  upper_mass_bound)
+  # ------------------------------------------------------------------
+  halo_mass_avg:   1.665e+13  # target average mass ~10^13.22 Msun
+  halo_mass_upper: 5.0e+14   # upper mass bound (Msun)
+
+  # ------------------------------------------------------------------
+  # SHAM / abundance-matching selection  (use_subhalos=True in stackMap)
+  #   Routes to select_abundance_subhalos(SubhaloMass, target_number, Lbox).
+  #   NOTE: stackMap does not expose halo_abundance_target; the value used
+  #   is the stack_on_array default: 5e-4 (cMpc/h)^-3.  It is shown here
+  #   for documentation only and is not read by the script.
+  # halo_abundance_target: 5.0e-4   # (cMpc/h)^-3  [stack_on_array default]
+  # ------------------------------------------------------------------
+
+
+plot:
+  fig_path: '../figures/'
+  fig_name: 'hod_ratio_z05'
+  fig_type: 'pdf'
+  plot_error_bars: true
+
+
+simulations:
+  # IllustrisTNG sims — coloured with the 'twilight' colormap
+  - sim_type: 'IllustrisTNG'
+    sims:
+      - name: 'TNG300-1'
+        snapshot: 67
+      - name: 'Illustris-1'
+        snapshot: 103
+
+  # SIMBA sim — coloured with the 'hsv' colormap
+  - sim_type: 'SIMBA'
+    sims:
+      - name: 'm100n1024'
+        snapshot: 125
+        feedback: 's50'

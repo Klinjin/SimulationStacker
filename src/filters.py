@@ -68,6 +68,13 @@ def CAP_ringring(mass_grid, r_grid, r, r0=1.0, pixel_size=1.0):
 def delta_sigma(mass_grid, r_grid, r, dr=0.6, pixel_size=1.0):
     """Calculate the excess surface mass density (ΔΣ) for a given radius.
 
+    .. deprecated::
+        This function is no longer used. Use ``delta_sigma_kernel`` instead,
+        which correctly normalises by pixel area and pixel count rather than
+        the geometric circle area. This function normalises by π r² (geometric
+        area) while ignoring ``pixel_size``, producing surface densities in
+        (mass/pixel)/arcmin² rather than physical surface density units.
+
     Args:
         mass_grid (np.ndarray)s: The mass distribution array.
         r_grid (np.ndarray): The radial grid corresponding to the mass distribution.
@@ -78,7 +85,7 @@ def delta_sigma(mass_grid, r_grid, r, dr=0.6, pixel_size=1.0):
     Returns:
         float: The value of ΔΣ at the given radius. M_sun / kpc^2 
     """
-    
+    print("WARNING: delta_sigma() is deprecated. Use delta_sigma_kernel() instead.")
     if dr is None:
         dr = np.sqrt(2) / 2 * r
     
@@ -371,7 +378,6 @@ def delta_sigma_mccarthy(
     rmin_theta: Optional[float] = None,  # if rbins_mpc_over_h is None, set rmin = chi * rmin_theta (arcmin)
     rmax_theta: Optional[float] = None,  # if rbins_mpc_over_h is None, set rmax = chi * rmax_theta (arcmin)
     n_rbins: int = 9,                    # if rbins_mpc_over_h is None, use this many log-spaced bins
-    
     theta_max_arcmin: Optional[float] = None,
     # bookkeeping
     nan_policy: str = "ignore",
@@ -379,6 +385,20 @@ def delta_sigma_mccarthy(
 ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, Optional[Tuple[np.ndarray, np.ndarray]]]:
     """
     Compute ΔΣ(R) from a total-mass angular map using the interior-mean minus local Σ construction.
+
+    .. deprecated::
+        This function is no longer used. Prefer ``delta_sigma_kernel`` for
+        simulation work. The estimator implemented here (McCarthy et al.
+        arXiv:2410.19905) is scientifically valid — it computes ΔΣ_k =
+        ⟨Σ(<R_k)⟩ − Σ_k per pixel then bins by R, converging to the same
+        quantity as the standard annular estimator. However, it is deprecated
+        here because: (1) it was designed for observational angular maps and
+        requires redshift/comoving conversions that add cosmology-mismatch risk;
+        (2) when ``rbins_mpc_over_h`` is None the bin edges are computed with
+        Planck18 via ``arcmin_to_comoving``, which may differ from the
+        simulation cosmology; (3) passing ``chi_mpc_over_h`` without ``cosmo``
+        causes a NameError at line ``cosmo.H0.value`` in the pixel-area
+        conversion. ``delta_sigma_kernel`` avoids all of these issues.
 
     This implements the procedure described in McCarthy et al. (arXiv:2410.19905):
     (1) convert angular pixels to comoving area via A_pix = (χ · θ_pix)^2 (small-angle),
@@ -438,6 +458,7 @@ def delta_sigma_mccarthy(
         of consecutive edges matches a desired monotonically increasing sequence derived from
         `rmin_theta`, `rmax_theta`, and `n_rbins`. See `bins_from_geomean_monotonic`.
     """
+    print("WARNING: delta_sigma_mccarthy() is deprecated. Use delta_sigma_kernel() instead.")
     # ---- validate angular inputs
     mass = np.asarray(mass_map, dtype=float)
     theta_arcmin = np.asarray(theta_grid_arcmin, dtype=float)

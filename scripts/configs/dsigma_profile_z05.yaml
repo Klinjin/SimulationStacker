@@ -13,7 +13,7 @@ stack:
   mask_radii: 3.0 # Number of virial radii to mask out for haloes. In units of R200c
   
   projection: 'yz' # 'xy', 'xz', 'yz'
-  pixel_size: 0.2 # in arcmin
+  pixel_size: 0.5 # in arcmin
   filter_type: 'DSigma' # Options: 'CAP', 'cumulative', 'DSigma'
   particle_type: 'total'
 
@@ -23,7 +23,7 @@ stack:
 plot:
   plot_data: True
   # data_path: '../data/Fig1_Fig8_dr10_allfoot_perbin_dr6_pzbin1.npz'
-  data_path: '/pscratch/sd/r/rhliu/projects/Weak_lensing/hsc/products/spec_Y3/dsigma_tomo_noboost_hscy3_bin4_LRG_bin1.fits'
+  data_path: '/pscratch/sd/r/rhliu/projects/Weak_lensing/hsc/products/spec_Y3/dsigma_tomo_noboost_hscy3_bin3_LRG_bin1.fits'
   data_label: 'HSCY3 Bin3 x LRG bin1 Lensing'
   fig_path: '../figures/'
   fig_name: 'hi_res_map_yz'

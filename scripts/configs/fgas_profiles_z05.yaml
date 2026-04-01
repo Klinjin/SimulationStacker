@@ -1,0 +1,96 @@
+# fgas_profiles_z05.yaml
+# ======================
+# Configuration for make_fgas_profiles.py
+#
+# Produces a two-panel figure of the normalised f_gas profile
+# (ionized_gas / total, divided by OmegaBaryon / Omega0) for two
+# halo selection methods at z = 0.5:
+#
+#   Left  panel : mass-cut FoF halo selection
+#   Right panel : SHAM / abundance-matching subhalo selection
+#
+# Simulations: TNG300-1 (snap 67), Illustris-1 (snap 103),
+#              SIMBA m100n1024 s50 (snap 125)
+
+stack:
+  # YAML flag controlling the stacking dimension.
+  # '2D' : stackMap — beam-convolved projected field, x-axis in arcmin.
+  # '3D' : direct 3D spherical stacking, x-axis in comoving kpc/h.
+  dim: '2D'
+  # dim: '3D'
+
+  # Redshift and projection
+  redshift: 0.5
+  projection: 'yz'          # options: 'xy', 'xz', 'yz'
+
+  # I/O caching
+  load_field: true
+  save_field: true
+
+  # Do not subtract the field mean before stacking
+  subtract_mean: false
+
+  # Particle types defining f_gas = particle_type / particle_type_2
+  particle_type:   'ionized_gas'
+  filter_type:     'CAP'        # options: 'CAP', 'cumulative', 'DSigma'
+  particle_type_2: 'total'
+  filter_type_2:   'CAP'
+
+  # ------------------------------------------------------------------
+  # 2D map parameters  (used when dim: '2D')
+  # Beam convolution uses the stackMap default of 1.6 arcmin.
+  # ------------------------------------------------------------------
+  pixel_size:    0.5          # map pixel size (arcmin)
+  min_radius_2d: 1.0          # innermost radial bin (arcmin)
+  max_radius_2d: 10.0         # outermost radial bin (arcmin)
+  num_radii_2d:  11           # number of radial bins
+  rad_distance:  1.0          # display scale factor applied to arcmin radii
+
+  # ------------------------------------------------------------------
+  # 3D field parameters  (used when dim: '3D')
+  # ------------------------------------------------------------------
+  n_pixels:      1000         # grid resolution for 3D field
+  min_radius_3d: 200.0        # innermost radial bin (comoving kpc/h)
+  max_radius_3d: 4000.0       # outermost radial bin (comoving kpc/h)
+  num_radii_3d:  11           # number of radial bins
+
+  # ------------------------------------------------------------------
+  # Mass-cut halo selection  (use_subhalos=False)
+  #   Routes to select_massive_halos(GroupMass, target_average_mass,
+  #                                  upper_mass_bound)
+  # ------------------------------------------------------------------
+  halo_mass_avg:   1.665e+13  # target average mass ~10^13.22 Msun
+  halo_mass_upper: 5.0e+14    # upper mass bound (Msun)
+
+  # ------------------------------------------------------------------
+  # SHAM / abundance-matching selection  (use_subhalos=True)
+  #   Routes to select_abundance_subhalos(SubhaloMass, target_number, Lbox).
+  #   For 3D stacking this value is read directly by the script.
+  #   For 2D stacking, stackMap does not expose this parameter and the
+  #   stack_on_array default (5e-4) is always used instead.
+  # ------------------------------------------------------------------
+  halo_abundance_target: 5.0e-4   # target number density (cMpc/h)^-3
+
+
+plot:
+  fig_path: '../figures/'
+  fig_name: 'fgas_profiles_z05'
+  fig_type: 'pdf'
+  plot_error_bars: true
+
+
+simulations:
+  # IllustrisTNG sims — coloured with the 'twilight' colormap
+  - sim_type: 'IllustrisTNG'
+    sims:
+      - name: 'TNG300-1'
+        snapshot: 67
+      - name: 'Illustris-1'
+        snapshot: 103
+
+  # SIMBA sim — coloured with the 'hsv' colormap
+  - sim_type: 'SIMBA'
+    sims:
+      - name: 'm100n1024'
+        snapshot: 125
+        feedback: 's50'

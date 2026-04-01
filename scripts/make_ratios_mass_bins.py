@@ -1,19 +1,26 @@
-"""make_ratios3x2.py
-===================
-Generate a 3×2 figure of particle-type fraction profiles, normalised by the
-cosmic baryon fraction (OmegaBaryon / OmegaMatter).
+"""make_ratios_mass_bins.py
+=========================
+Generate a 4×3 figure of particle-type fraction profiles normalised by the
+cosmic baryon fraction (OmegaBaryon / OmegaMatter), broken down by halo mass
+bin.  Intended for Appendix C.
 
 Layout
 ------
-Rows:    top = TNG suite (TNG50, TNG100, TNG300, Illustris)
-         bottom = SIMBA suite
-Columns: col 0 = 3D spherical profiles  (radius in comoving kpc/h)
-         col 1 = 2D projected, cumulative filter  (radius in arcmin)
-         col 2 = 2D projected, CAP filter          (radius in arcmin)
+Rows:    mass bins 0–3 as defined by ``halo_ind()`` in ``halos.py``:
+           bin 0 → 5e11–1e12  Msun
+           bin 1 → 1e12–1e13  Msun
+           bin 2 → 1e13–1e14  Msun
+           bin 3 → 1e14–1e19  Msun
+Columns: col 0 = 3D spherical profiles   (radius in comoving kpc/h)
+         col 1 = 2D projected, cumulative (radius in arcmin)
+         col 2 = 2D projected, CAP filter (radius in arcmin)
+
+Simulations plotted on every panel as separate coloured lines:
+  TNG300-1, Illustris-1, m100n1024_s50
 
 Usage
 -----
-    python make_ratios3x2.py -p configs/ratios_3x2_z05.yaml
+    python make_ratios_mass_bins.py -p configs/ratios_mass_bins_z05.yaml
 """
 
 import sys
@@ -35,7 +42,7 @@ import argparse
 sys.path.append('../src/')
 from utils import arcmin_to_comoving, comoving_to_arcmin
 from stacker import SimulationStacker
-from halos import select_massive_halos
+from halos import halo_ind, select_binned_halos
 from mask_utils import get_cutout_indices_3d, sum_over_cutouts
 
 sys.path.append('../../illustrisPython/')
@@ -57,12 +64,22 @@ matplotlib.rcParams.update({
     "legend.fontsize":  13,
 })
 
-# Colour maps used for TNG (col 0 of simulations list) and SIMBA (col 1).
-# _COLOURMAPS = ['hsv', 'twilight']
-_COLOURMAPS = ['twilight', 'hsv']
+# Per-suite colourmaps: IllustrisTNG sims → twilight, SIMBA sims → hsv.
+# This matches the assignment in the tSZ reference scripts.
+_COLOURMAPS = {'IllustrisTNG': 'twilight', 'SIMBA': 'hsv'}
 
-# Subplot panel labels in reading order.
-_PANEL_LABELS = ['(a)', '(b)', '(c)', '(d)', '(e)', '(f)']
+# Ordered reference TNG sim list used to fix colour positions so that omitting
+# TNG100-1 from the config does not shift the colours of TNG300-1/Illustris-1.
+# Extend this list here if new TNG sims are added.
+_TNG_REFERENCE_ORDER = ['TNG100-1', 'TNG300-1', 'Illustris-1']
+
+# Subplot panel labels in reading order (4 rows × 3 cols = 12 panels).
+_PANEL_LABELS = [
+    '(a)', '(b)', '(c)',
+    '(d)', '(e)', '(f)',
+    '(g)', '(h)', '(i)',
+    '(j)', '(k)', '(l)',
+]
 
 # Default OmegaBaryon for Illustris-1 (not stored in header).
 _OMEGA_BARYON_ILLUSTRIS_DEFAULT = 0.0456
@@ -162,12 +179,13 @@ def _profile_ratio_and_err(profiles0: np.ndarray, profiles1: np.ndarray,
 def compute_3d_profile_ratio(stacker: SimulationStacker,
                               pType: str, pType2: str,
                               params: dict,
-                              OmegaBaryon: float):
+                              OmegaBaryon: float,
+                              halo_mask: np.ndarray):
     """Compute 3D spherical-shell fraction profiles.
 
-    Builds 3D density fields with ``stacker.makeField``, selects halos by
-    mass, and accumulates the enclosed mass in spherical apertures using
-    ``get_cutout_indices_3d`` / ``sum_over_cutouts``.
+    Builds 3D density fields with ``stacker.makeField``, uses the supplied
+    ``halo_mask`` to select halos, and accumulates the enclosed mass in
+    spherical apertures using ``get_cutout_indices_3d`` / ``sum_over_cutouts``.
 
     Parameters
     ----------
@@ -177,9 +195,11 @@ def compute_3d_profile_ratio(stacker: SimulationStacker,
     params : dict
         Sub-dict of stack parameters (``n_pixels``, ``min_radius_3d``,
         ``max_radius_3d``, ``num_radii_3d``, ``projection``,
-        ``save_field``, ``load_field``, ``subtract_mean``,
-        ``halo_mass_min``, ``halo_mass_max``).
+        ``save_field``, ``load_field``, ``subtract_mean``).
     OmegaBaryon : float
+    halo_mask : ndarray of int
+        Integer indices into the halo catalogue selecting halos for stacking.
+        Caller is responsible for computing this via ``select_binned_halos``.
 
     Returns
     -------
@@ -188,18 +208,14 @@ def compute_3d_profile_ratio(stacker: SimulationStacker,
     err   : ndarray
     R200c : float     — mean R200c for the selected halos (comoving kpc/h)
     """
-    nPixels     = params['n_pixels']
-    minR        = params['min_radius_3d']
-    maxR        = params['max_radius_3d']
-    nRadii      = params['num_radii_3d']
-    projection  = params['projection']
-    save        = params['save_field']
-    load        = params['load_field']
-    sub_mean    = params['subtract_mean']
-    # mass_min    = params['halo_mass_min']
-    # mass_max    = params.get('halo_mass_max', None)
-    mass_min    = 10 ** 13.22 
-    mass_max    = 5 * 1e14  
+    nPixels    = params['n_pixels']
+    minR       = params['min_radius_3d']
+    maxR       = params['max_radius_3d']
+    nRadii     = params['num_radii_3d']
+    projection = params['projection']
+    save       = params['save_field']
+    load       = params['load_field']
+    sub_mean   = params['subtract_mean']
 
     # Build 3D fields for both particle types.
     field0 = stacker.makeField(pType, nPixels=nPixels, dim='3D',
@@ -213,9 +229,8 @@ def compute_3d_profile_ratio(stacker: SimulationStacker,
     # Physical scale: comoving kpc/h per pixel.
     kpc_per_pixel = stacker.header['BoxSize'] / field0.shape[0]
 
-    # Halo selection by mass.
-    haloes    = stacker.loadHalos()
-    halo_mask = select_massive_halos(haloes['GroupMass'], mass_min, mass_max)
+    # Use the externally-provided halo_mask; no internal selection here.
+    haloes = stacker.loadHalos()
     GroupPos_masked = (
         np.round(haloes['GroupPos'][halo_mask] / kpc_per_pixel).astype(int) % nPixels
     )
@@ -243,7 +258,8 @@ def compute_2d_profile_ratio(stacker: SimulationStacker,
                               pType: str, pType2: str,
                               filterType: str, filterType2: str,
                               params: dict,
-                              OmegaBaryon: float):
+                              OmegaBaryon: float,
+                              halo_mask: np.ndarray):
     """Compute 2D projected fraction profiles via ``stackMap``.
 
     Parameters
@@ -258,6 +274,9 @@ def compute_2d_profile_ratio(stacker: SimulationStacker,
         ``max_radius_2d``, ``num_radii_2d``, ``rad_distance``, ``projection``,
         ``save_field``, ``load_field``, ``subtract_mean``).
     OmegaBaryon : float
+    halo_mask : ndarray of int
+        Integer indices into the halo catalogue selecting halos for stacking.
+        Passed directly to ``stacker.stackMap``; internal selection is skipped.
 
     Returns
     -------
@@ -280,14 +299,14 @@ def compute_2d_profile_ratio(stacker: SimulationStacker,
         minRadius=minR, maxRadius=maxR, numRadii=nRadii,
         save=save, load=load, radDistance=radDistance,
         pixelSize=pixelSize, projection=projection,
-        subtract_mean=sub_mean,
+        subtract_mean=sub_mean, halo_mask=halo_mask,
     )
     radii1, profiles1 = stacker.stackMap(
         pType2, filterType=filterType2,
         minRadius=minR, maxRadius=maxR, numRadii=nRadii,
         save=save, load=load, radDistance=radDistance,
         pixelSize=pixelSize, projection=projection,
-        subtract_mean=sub_mean,
+        subtract_mean=sub_mean, halo_mask=halo_mask,
     )
 
     ratio, err = _profile_ratio_and_err(profiles0, profiles1,
@@ -321,32 +340,41 @@ def configure_subplot(ax, row_idx: int, col_idx: int,
                       R200c_arcmin: float | None,
                       forward_arcmin, inverse_arcmin,
                       max_radius_2d: float, rad_distance: float,
-                      suite_name: str, panel_label: str):
+                      suite_name: str, panel_label: str,
+                      n_rows: int = 2):
     """Apply axis decorations to a single subplot panel.
 
     Parameters
     ----------
     ax : matplotlib.axes.Axes
     row_idx, col_idx : int
-        Position in the 2×3 grid.
+        Position in the grid.
     pType, pType2 : str
-        Particle type names used for y-axis label.
+        Particle type names used for the y-axis label.
     R200c_kpch : float or None
         R200c in comoving kpc/h for the vertical reference line (col 0 only).
     R200c_arcmin : float or None
         R200c in arcmin for the vertical reference line (cols 1, 2 only).
     forward_arcmin, inverse_arcmin : callable
         Conversion functions between arcmin and comoving kpc/h, used to add
-        a secondary x-axis on the top row (cols 1, 2).
+        a secondary x-axis.
     max_radius_2d : float
         Upper limit for 2D x-axis (arcmin).
     rad_distance : float
         Scaling factor applied to 2D arcmin radii.
     suite_name : str
-        Suite label used in the column 0 title (ignored for cols 1, 2).
+        Unused in this script; retained for API compatibility with
+        ``make_ratios3x2.py``.
     panel_label : str
         Subplot letter, e.g. ``'(a)'``.
+    n_rows : int, optional
+        Total number of rows in the figure. Used to identify the top row
+        (for column titles and secondary-axis labels) and the bottom row
+        (for primary x-axis labels). Defaults to 2 for backward compatibility.
     """
+    is_top_row    = (row_idx == 0)
+    is_bottom_row = (row_idx == n_rows - 1)
+
     # --- Horizontal reference line at unity ---
     ax.axhline(1.0, color='k', ls='--', lw=2)
 
@@ -360,6 +388,8 @@ def configure_subplot(ax, row_idx: int, col_idx: int,
     ax.set_xlim(0.0, None if col_idx == 0
                 else (max_radius_2d * rad_distance + 0.5))
     ax.grid(True)
+    if is_bottom_row:
+        ax.set_ylim(0.0, 1.2)
 
     # --- Y axis label (left column only) ---
     if col_idx == 0:
@@ -370,32 +400,37 @@ def configure_subplot(ax, row_idx: int, col_idx: int,
 
     # --- X axis labels and secondary axis ---
     col_titles = ['3D cumulative', '2D cumulative', '2D CAP']
+    # This line ensures x-axis tick labels are visible on the bottom row, even when sharing x-axes across rows.
+    # ax.tick_params(axis='x', labelbottom=True)
     if col_idx == 0:
-        # 3D column: x in comoving kpc/h
-        if row_idx == 1:
+        if is_bottom_row:
             ax.set_xlabel('R [comoving kpc/h]', fontsize=18)
-            # ax.legend(loc='lower right')
+            # Secondary x-axis ticks visible on all rows.
+            # secax = ax.secondary_xaxis('top')
         else:
-            # Secondary x-axis on top row (also in comoving kpc/h, no conversion needed)
-            secax = ax.secondary_xaxis('top')
-            secax.set_xlabel('R [comoving kpc/h]', fontsize=18)
-            # ax.set_title(f'{suite_name} — {col_titles[col_idx]}', fontsize=18)
-            ax.set_title(col_titles[col_idx], fontsize=18)
+            # Secondary x-axis ticks visible on all rows.
+            # secax = ax.secondary_xaxis('top')
+            if is_top_row:
+                secax = ax.secondary_xaxis('top')
+                # Label and column title only on the top row.
+                secax.set_xlabel('R [comoving kpc/h]', fontsize=18)
+                ax.set_title(col_titles[col_idx], fontsize=18)
     else:
-        # 2D columns: x in arcmin
-        if row_idx == 1:
+        if is_bottom_row:
             ax.set_xlabel('R [arcmin]', fontsize=18)
-            # ax.legend(loc='lower right')
+            # Secondary x-axis ticks visible on all rows.
+            # secax = ax.secondary_xaxis('top',
+            #                            functions=(forward_arcmin, inverse_arcmin))
         else:
-            # Add secondary x-axis in comoving kpc/h on top row.
-            secax = ax.secondary_xaxis('top',
-                                       functions=(forward_arcmin, inverse_arcmin))
-            secax.set_xlabel('R [comoving kpc/h]', fontsize=18)
-            ax.set_title(col_titles[col_idx], fontsize=18)
-
-    # --- Column titles for top row ---
-    if row_idx == 0 and col_idx > 0:
-        pass  # title already set above
+            # Secondary x-axis ticks visible on all rows.
+            # secax = ax.secondary_xaxis('top',
+            #                            functions=(forward_arcmin, inverse_arcmin))
+            if is_top_row:
+                secax = ax.secondary_xaxis('top',
+                                           functions=(forward_arcmin, inverse_arcmin))
+                # Label and column title only on the top row.
+                secax.set_xlabel('R [comoving kpc/h]', fontsize=18)
+                ax.set_title(col_titles[col_idx], fontsize=18)
 
     # --- Subplot panel label in top-left corner ---
     ax.text(0.03, 0.97, panel_label, transform=ax.transAxes,
@@ -408,14 +443,14 @@ def configure_subplot(ax, row_idx: int, col_idx: int,
 # ===========================================================================
 
 def main(path2config: str, ptype: str, verbose: bool = True):
-    """Generate the 3×2 particle-fraction ratio figure.
+    """Generate the 4×3 particle-fraction ratio figure, broken down by mass bin.
 
     Parameters
     ----------
     path2config : str
         Path to the YAML configuration file.
     ptype : str
-        Particle type to plot (overrides config).
+        Particle type to plot (overrides config if not None).
     verbose : bool
         If True, print progress messages to stdout.
     """
@@ -435,8 +470,11 @@ def main(path2config: str, ptype: str, verbose: bool = True):
     load_field  = stack_cfg.get('load_field', True)
     subtract_mn = stack_cfg.get('subtract_mean', False)
     pType       = ptype if ptype is not None else stack_cfg.get('particle_type', 'ionized_gas')
-    # pType       = stack_cfg.get('particle_type', 'ionized_gas')
     pType2      = stack_cfg.get('particle_type_2', 'total')
+
+    # Mass bin indices to loop over (can be edited in config to drop bins).
+    mass_bin_indices = stack_cfg.get('mass_bin_indices', [0, 1, 2, 3])
+    n_bins = len(mass_bin_indices)
 
     # --- 3D column parameters ---
     params_3d = {
@@ -448,12 +486,10 @@ def main(path2config: str, ptype: str, verbose: bool = True):
         'save_field':    save_field,
         'load_field':    load_field,
         'subtract_mean': subtract_mn,
-        'halo_mass_min': stack_cfg.get('halo_mass_min', 10 ** 13.22),
-        'halo_mass_max': stack_cfg.get('halo_mass_max', 5e14),
     }
 
     # --- 2D column parameters ---
-    rad_distance = stack_cfg.get('rad_distance', 1.0)
+    rad_distance  = stack_cfg.get('rad_distance', 1.0)
     max_radius_2d = stack_cfg.get('max_radius_2d', 10.0)
     params_2d = {
         'pixel_size':    stack_cfg.get('pixel_size', 0.5),
@@ -480,132 +516,166 @@ def main(path2config: str, ptype: str, verbose: bool = True):
     figPath   = Path(plot_cfg.get('fig_path', '../figures/')) / yr_string / dt_string
     figPath.mkdir(parents=True, exist_ok=True)
 
-    figName        = plot_cfg.get('fig_name', 'ratios_3x2')
-    figType        = plot_cfg.get('fig_type', 'pdf')
+    figName         = plot_cfg.get('fig_name', 'ratios_mass_bins')
+    figType         = plot_cfg.get('fig_type', 'pdf')
     plot_error_bars = plot_cfg.get('plot_error_bars', True)
 
     # ------------------------------------------------------------------
-    # Identify TNG and SIMBA simulation lists from config.
-    # Rows: TNG = row 0, SIMBA = row 1.
+    # Build flat list of (sim_dict, sim_type_name) from config.
+    # Order: TNG suite first, then SIMBA; within each suite, preserve
+    # the order given in the YAML.
     # ------------------------------------------------------------------
-    tng_sims   = None
-    simba_sims = None
+    all_sim_entries = []  # list of (sim_dict, sim_type_name)
     for suite in config['simulations']:
-        if suite['sim_type'] == 'IllustrisTNG':
-            tng_sims   = suite['sims']
-            tng_cmap   = matplotlib.colormaps[_COLOURMAPS[0]]  # type: ignore
-            tng_colours = tng_cmap(np.linspace(0.2, 0.85, len(tng_sims)))
-        elif suite['sim_type'] == 'SIMBA':
-            simba_sims   = suite['sims']
-            simba_cmap   = matplotlib.colormaps[_COLOURMAPS[1]]  # type: ignore
-            simba_colours = simba_cmap(np.linspace(0.2, 0.85, len(simba_sims)))
+        sim_type_name = suite['sim_type']
+        for sim in suite['sims']:
+            all_sim_entries.append((sim, sim_type_name))
 
-    if tng_sims is None or simba_sims is None:
-        raise ValueError("Config must contain both 'IllustrisTNG' and 'SIMBA' simulation entries.")
+    # One colour per simulation, fixed across all rows.
+    # TNG: positions fixed by _TNG_REFERENCE_ORDER so omitting TNG100-1 does
+    #      not shift the colours of TNG300-1/Illustris-1.
+    # SIMBA (1 sim): position 0.85 (last of 6, matching tSZ reference scripts).
+    _tng_cmap       = matplotlib.colormaps[_COLOURMAPS['IllustrisTNG']]  # type: ignore
+    _tng_ref_clrs   = _tng_cmap(np.linspace(0.2, 0.85, len(_TNG_REFERENCE_ORDER)))
+    _tng_colour_map = {name: _tng_ref_clrs[i]
+                       for i, name in enumerate(_TNG_REFERENCE_ORDER)}
+
+    _n_simba    = sum(1 for _, stype in all_sim_entries if stype == 'SIMBA')
+    _simba_cmap = matplotlib.colormaps[_COLOURMAPS['SIMBA']]  # type: ignore
+    _simba_clrs = (_simba_cmap(np.linspace(0.2, 0.85, 6))[-1:]
+                   if _n_simba == 1
+                   else _simba_cmap(np.linspace(0.2, 0.85, _n_simba)))
+
+    _simba_idx = 0
+    colours = []
+    for sim, sim_type_name in all_sim_entries:
+        if sim_type_name == 'IllustrisTNG':
+            name = sim['name']
+            if name not in _tng_colour_map:
+                raise ValueError(
+                    f"TNG sim {name!r} is not in _TNG_REFERENCE_ORDER. "
+                    f"Add it there to maintain consistent colours."
+                )
+            colours.append(_tng_colour_map[name])
+        elif sim_type_name == 'SIMBA':
+            colours.append(_simba_clrs[_simba_idx])
+            _simba_idx += 1
+        else:
+            raise ValueError(
+                f"No colormap defined for sim_type {sim_type_name!r}. "
+                f"Known types: {list(_COLOURMAPS)}"
+            )
 
     # ------------------------------------------------------------------
-    # Create figure
+    # Instantiate all stackers once, outside the mass-bin loop.
+    # Reusing the same stacker across bins avoids re-loading maps that
+    # are identical for all bins (only halo selection differs).
     # ------------------------------------------------------------------
-    fig, axes = plt.subplots(2, 3, figsize=(18, 9), sharex='col', sharey='row')
+    if verbose:
+        print("Initialising stackers...")
 
-    # R200c placeholders (set during the first processed sim in each suite).
-    R200c_kpch_tng   = None
-    R200c_kpch_simba = None
-    R200c_arcmin_tng   = None
-    R200c_arcmin_simba = None
+    sim_data = []  # list of (stacker, OmegaBaryon, cosmo, sim_label, colour)
+    for (sim, sim_type_name), colour in zip(all_sim_entries, colours):
+        stacker, OmegaBaryon, cosmo, sim_label = setup_stacker(
+            sim, sim_type_name, redshift)
+        sim_data.append((stacker, OmegaBaryon, cosmo, sim_label, colour))
+        if verbose:
+            print(f"  Loaded: {sim_label}")
 
-    # Arcmin ↔ comoving kpc/h conversion functions (set after first TNG stacker).
-    forward_arcmin  = None
-    inverse_arcmin  = None
+    # Arcmin ↔ comoving kpc/h conversion functions, built from TNG300-1
+    # (first entry, assumed to be TNG300-1 per the config ordering).
+    tng300_stacker, _, cosmo_tng300, _, _ = sim_data[0]
+
+    def _fwd_arcmin(arcmin):
+        return arcmin_to_comoving(arcmin, redshift, cosmo_tng300)
+
+    def _inv_arcmin(comov):
+        return comoving_to_arcmin(comov, redshift, cosmo_tng300)
 
     t0 = time.time()
 
     # ------------------------------------------------------------------
-    # Loop over suites: row 0 = TNG, row 1 = SIMBA
+    # Create figure
     # ------------------------------------------------------------------
-    suites = [
-        ('IllustrisTNG', tng_sims,   tng_colours,   0),
-        ('SIMBA',        simba_sims, simba_colours, 1),
-    ]
+    fig, axes = plt.subplots(n_bins, 3, figsize=(18, 9),
+                             sharex='col', sharey=True)
 
-    for sim_type_name, sims, colours, row_idx in suites:
+    # ------------------------------------------------------------------
+    # Outer loop: mass bins (rows)
+    # ------------------------------------------------------------------
+    for row_idx, bin_ind in enumerate(mass_bin_indices):
+        _, _, bin_label_raw = halo_ind(bin_ind)
+        bin_label = bin_label_raw.rstrip(', ')
+
         if verbose:
             print(f"\n{'='*60}")
-            print(f"Suite: {sim_type_name}  (row {row_idx})")
+            print(f"Row {row_idx}: mass bin {bin_ind}  ({bin_label})")
             print(f"{'='*60}")
 
-        for j, sim in enumerate(sims):
-            sim_name = sim['name']
-            if verbose:
-                feedback_str = f"  feedback={sim.get('feedback')}" if sim_type_name == 'SIMBA' else ''
-                print(f"\n  [{j+1}/{len(sims)}] {sim_name}{feedback_str}")
+        # R200c reference line for this row comes from TNG300-1.
+        tng300_halos    = tng300_stacker.loadHalos()
+        tng300_bin_mask = select_binned_halos(tng300_halos['GroupMass'], bin_ind)
+        R200c_kpch   = np.mean(tng300_halos['GroupRad'][tng300_bin_mask])
+        R200c_arcmin = comoving_to_arcmin(R200c_kpch, redshift, cosmo_tng300)
 
-            # ---- Instantiate stacker ----
-            stacker, OmegaBaryon, cosmo, sim_label = setup_stacker(
-                sim, sim_type_name, redshift)
+        # ------------------------------------------------------------------
+        # Inner loop: simulations
+        # ------------------------------------------------------------------
+        for j, (stacker, OmegaBaryon, cosmo, sim_label, colour) in enumerate(sim_data):
+            # Select halos for this (sim, bin) pair.
+            haloes    = stacker.loadHalos()
+            halo_mask = select_binned_halos(haloes['GroupMass'], bin_ind)
+            n_halos   = len(halo_mask)
 
-            # ---- Arcmin ↔ kpc/h conversion (initialised from first TNG sim) ----
-            if forward_arcmin is None:
-                def _make_converters(c, z):
-                    def _fwd(arcmin): return arcmin_to_comoving(arcmin, z, c)
-                    def _inv(comov):  return comoving_to_arcmin(comov,  z, c)
-                    return _fwd, _inv
-                forward_arcmin, inverse_arcmin = _make_converters(cosmo, redshift)
+            print(f"  {sim_label}  bin {bin_ind}: {n_halos} halos selected")
+            if n_halos < 20:
+                print(f"  WARNING: only {n_halos} halos in bin {bin_ind} "
+                      f"for {sim_label} — consider dropping this bin.")
+
+            # Legend label includes halo count so the reader can see N
+            # directly without cross-referencing stdout.
+            label = rf"{sim_label}  ($N={n_halos}$)"
 
             # ==============================================================
             # Column 0 — 3D spherical profiles
             # ==============================================================
             if verbose:
                 print(f"    Computing 3D profiles...")
-            radii_3d, ratio_3d, err_3d, R200c_kpch = compute_3d_profile_ratio(
-                stacker, pType, pType2, params_3d, OmegaBaryon)
-
-            # Cache R200c for vline decoration.
-            if sim_type_name == 'IllustrisTNG' and R200c_kpch_tng is None:
-                R200c_kpch_tng = R200c_kpch
-            if sim_type_name == 'SIMBA' and R200c_kpch_simba is None:
-                R200c_kpch_simba = R200c_kpch
+            radii_3d, ratio_3d, err_3d, _ = compute_3d_profile_ratio(
+                stacker, pType, pType2, params_3d, OmegaBaryon, halo_mask)
 
             plot_panel(axes[row_idx, 0], radii_3d, ratio_3d, err_3d,
-                       sim_label, colours[j], plot_error_bars)
+                       label, colour, plot_error_bars)
 
             # ==============================================================
             # Column 1 — 2D cumulative profiles
             # ==============================================================
             if verbose:
-                print(f"    Computing 2D cumulative profiles (filter={ft_col1}/{ft2_col1})...")
+                print(f"    Computing 2D cumulative profiles "
+                      f"(filter={ft_col1}/{ft2_col1})...")
             radii_2d_cum, ratio_2d_cum, err_2d_cum = compute_2d_profile_ratio(
-                stacker, pType, pType2, ft_col1, ft2_col1, params_2d, OmegaBaryon)
-
-            # Cache R200c in arcmin.
-            if sim_type_name == 'IllustrisTNG' and R200c_arcmin_tng is None:
-                R200c_arcmin_tng = comoving_to_arcmin(R200c_kpch, redshift, cosmo)
-            if sim_type_name == 'SIMBA' and R200c_arcmin_simba is None:
-                R200c_arcmin_simba = comoving_to_arcmin(R200c_kpch, redshift, cosmo)
+                stacker, pType, pType2, ft_col1, ft2_col1,
+                params_2d, OmegaBaryon, halo_mask)
 
             plot_panel(axes[row_idx, 1], radii_2d_cum, ratio_2d_cum, err_2d_cum,
-                       sim_label, colours[j], plot_error_bars)
+                       label, colour, plot_error_bars)
 
             # ==============================================================
             # Column 2 — 2D CAP profiles
             # ==============================================================
             if verbose:
-                print(f"    Computing 2D CAP profiles (filter={ft_col2}/{ft2_col2})...")
+                print(f"    Computing 2D CAP profiles "
+                      f"(filter={ft_col2}/{ft2_col2})...")
             radii_2d_cap, ratio_2d_cap, err_2d_cap = compute_2d_profile_ratio(
-                stacker, pType, pType2, ft_col2, ft2_col2, params_2d, OmegaBaryon)
+                stacker, pType, pType2, ft_col2, ft2_col2,
+                params_2d, OmegaBaryon, halo_mask)
 
             plot_panel(axes[row_idx, 2], radii_2d_cap, ratio_2d_cap, err_2d_cap,
-                       sim_label, colours[j], plot_error_bars)
+                       label, colour, plot_error_bars)
 
-    # ------------------------------------------------------------------
-    # Axis decorations
-    # ------------------------------------------------------------------
-    suite_names = ['IllustrisTNG', 'SIMBA']
-    R200c_kpch_per_row   = [R200c_kpch_tng,   R200c_kpch_simba]
-    R200c_arcmin_per_row = [R200c_arcmin_tng, R200c_arcmin_simba]
-
-    panel_idx = 0
-    for row_idx, suite_name in enumerate(suite_names):
+        # ------------------------------------------------------------------
+        # Axis decorations for this row
+        # ------------------------------------------------------------------
         for col_idx in range(3):
             configure_subplot(
                 ax=axes[row_idx, col_idx],
@@ -613,52 +683,40 @@ def main(path2config: str, ptype: str, verbose: bool = True):
                 col_idx=col_idx,
                 pType=pType,
                 pType2=pType2,
-                R200c_kpch=R200c_kpch_per_row[row_idx],
-                R200c_arcmin=R200c_arcmin_per_row[row_idx],
-                forward_arcmin=forward_arcmin,
-                inverse_arcmin=inverse_arcmin,
+                R200c_kpch=R200c_kpch,
+                R200c_arcmin=R200c_arcmin,
+                forward_arcmin=_fwd_arcmin,
+                inverse_arcmin=_inv_arcmin,
                 max_radius_2d=max_radius_2d,
                 rad_distance=rad_distance,
-                suite_name=suite_name,
-                panel_label=_PANEL_LABELS[panel_idx],
+                suite_name='',
+                panel_label=_PANEL_LABELS[row_idx * 3 + col_idx],
+                n_rows=n_bins,
             )
-            panel_idx += 1
 
-    # -----------------------------------------------------------------------
-    # Figure-level labels and layout
-    # -----------------------------------------------------------------------
-    # Row labels placed as text on the leftmost axes so that shared-y axes do
-    # not duplicate the y-label on every panel
-    axes[0, 0].annotate('IllustrisTNG', xy=(-0.25, 0.5), xycoords='axes fraction',
-                        ha='right', va='center', rotation=90, fontsize=14,
-                        fontweight='bold')
-    axes[1, 0].annotate('SIMBA', xy=(-0.25, 0.5), xycoords='axes fraction',
-                        ha='right', va='center', rotation=90, fontsize=14,
-                        fontweight='bold')
+        # Row label on the left of col 0.
+        axes[row_idx, 0].annotate(
+            bin_label,
+            xy=(-0.30, 0.5), xycoords='axes fraction',
+            ha='right', va='center', rotation=90,
+            fontsize=13, fontweight='bold',
+        )
 
-    # -----------------------------------------------------------------------
-    # Legends positioned to the right of the figure
-    # -----------------------------------------------------------------------
-    # Collect handles and labels from the rightmost column for each row
-    handles_tng, labels_tng = axes[0, 2].get_legend_handles_labels()
-    handles_simba, labels_simba = axes[1, 2].get_legend_handles_labels()
-    
-    # Create legends on the right side: TNG on top, SIMBA on bottom
-    legend_tng = fig.legend(handles_tng, labels_tng, 
-                           loc='upper left', bbox_to_anchor=(0.89, 0.88),
-                           frameon=True, fontsize=13, title='IllustrisTNG',
-                           title_fontsize=14)
-    legend_simba = fig.legend(handles_simba, labels_simba,
-                             loc='upper left', bbox_to_anchor=(0.873, 0.48),
-                             frameon=True, fontsize=13, title='SIMBA',
-                             title_fontsize=14)
+        # Per-row legend to the right of col 2.  Each row has its own
+        # N= labels so the reader can immediately see halo counts.
+        handles, labels_leg = axes[row_idx, 2].get_legend_handles_labels()
+        axes[row_idx, 2].legend(
+            handles, labels_leg,
+            bbox_to_anchor=(1.01, 1.0), loc='upper left',
+            frameon=True, fontsize=11,
+        )
 
     # ------------------------------------------------------------------
     # Save figure
     # ------------------------------------------------------------------
-    fig.tight_layout(rect=[0, 0, 0.90, 1]) # type: ignore
+    fig.tight_layout(rect=[0, 0, 1.01, 1])  # type: ignore
     out_path = figPath / f'{figName}_{pType}.{figType}'
-    fig.savefig(out_path, dpi=300) # type: ignore
+    fig.savefig(out_path, dpi=300)  # type: ignore
     plt.close(fig)
 
     elapsed = (time.time() - t0) / 60
@@ -672,11 +730,11 @@ def main(path2config: str, ptype: str, verbose: bool = True):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
-        description="Generate 3×2 particle-fraction ratio figure.")
+        description="Generate 4×3 particle-fraction ratio figure by mass bin.")
     parser.add_argument(
         '-p', '--path2config',
         type=str,
-        default='./configs/ratios_3x2_z05.yaml',
+        default='./configs/ratios_mass_bins_z05.yaml',
         help='Path to the YAML configuration file.',
     )
     parser.add_argument(

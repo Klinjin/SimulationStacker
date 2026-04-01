@@ -17,11 +17,13 @@ stack:
   projection: 'yz' # 'xy', 'xz', 'yz'
 
   filter_type: 'DSigma' # Options: 'CAP', 'cumulative', 'DSigma', 'upsilon'
-  particle_type: 'ionized_gas'
+  particle_type: 'ionized_gas' # 'DM', 'gas', 'stars', 'total', 'ionized_gas'
   filter_type_2: 'DSigma' # Options: 'CAP', 'cumulative', 'DSigma', 'upsilon'
   particle_type_2: 'total'
 
   subtract_mean: false # Whether to subtract the mean of the field before stacking
+  # TODO: Make sure the subhalo abundance matching is at correct halo abundance.
+  use_subhalos: true # Whether to use subhalos instead of host halos for stacking. If true, will select subhalos based on abundance matching to match the number density specified by the user (see below).
 
 
 plot:
@@ -33,7 +35,7 @@ plot:
   # data_label: 'Hadzhiyska 2024 pz1'
   fig_path: '../figures/'
   fig_name: 'BGS_ratios_yz_data'
-  fig_type: 'png'
+  fig_type: 'pdf'
   plot_error_bars: true
 
 

@@ -55,5 +55,5 @@ simulations:
         # snapshot: 67
       - name: 'Illustris-1'
         snapshot: 103
-      - name: 'Illustris-2'
-        snapshot: 103
+      # - name: 'Illustris-2'
+      #   snapshot: 103

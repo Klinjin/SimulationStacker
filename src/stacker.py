@@ -4,6 +4,7 @@ import sys
 import numpy as np
 import matplotlib.pyplot as plt
 import h5py
+import warnings
 
 import scipy
 from scipy.stats import binned_statistic_2d
@@ -94,7 +95,8 @@ class SimulationStacker(object):
         self.maps = {}
 
     def makeField(self, pType, nPixels=None, projection='xy', save=False, load=True, 
-                  mask=False, maskRad=3.0, base_path=None, dim='2D'):
+                  mask=False, maskRad=3.0, mask_target_mass=10**(13.22), mask_upper_mass=5*10**(14),
+                  base_path=None, dim='2D'):
         """Uses a histogram binning to make projected fields (either 2D or 3D) of a given particle type from the simulation.
 
         Args:
@@ -310,7 +312,7 @@ class SimulationStacker(object):
 
         Returns:
             radii, profiles: Stacked radial profiles (2D) and their corresponding radii (1D).
-            
+
         TODO:
             Add a wrapper for automatic stacking along all 3 projections.
             Implement the DSigma filter for stacking.
@@ -395,6 +397,9 @@ class SimulationStacker(object):
             use_subhalos (bool, optional): If True, uses subhalos in the stacking. Defaults to False.
             halo_mass_avg (float, optional): Average halo mass for subhalo selection. Defaults to 10^(13.22).
             halo_mass_upper (float, optional): Upper halo mass limit for subhalo selection. Defaults to 5*10^(14).
+            halo_mask (np.ndarray, optional): Pre-selected integer index array into the halo
+                catalogue. When provided, internal halo selection is skipped entirely.
+                Defaults to None.
         Raises:
             NotImplementedError: If pType is not one of the ones listed above.
 
@@ -467,15 +472,19 @@ class SimulationStacker(object):
             projection (str, optional): Direction projection used. Defaults to 'xy'.
             radDistance (float, optional): Radial distance units for stacking. Defaults to 1000.
             radDistanceUnits (str, optional): Units for radDistance. Either 'kpc/h' or 'arcmin'. Defaults to 'kpc/h'.
-            halo_mass_avg (float, optional): Average halo mass for selecting halos. Defaults to 10**(13.22).
-            halo_mass_upper (float, optional): Upper mass bound for selecting halos. Defaults to 5*10**(14).
+            halo_mass_avg (float, optional): Average halo mass for selecting halos ('massive' method). Defaults to 10**(13.22).
+            halo_mass_upper (float, optional): Upper mass bound for selecting halos ('massive' method). Defaults to 5*10**(14).
+            halo_abundance_target (float, optional): Target number density in (cMpc/h)^-3 for subhalo abundance matching ('abundance' method). Subhalos are ranked by stellar mass (SubhaloMStar) rather than total bound mass, following the observational motivation for stellar-mass-based SHAM (Reddick et al. 2013). Defaults to 5e-4.
             z (float, optional): Redshift for angular distance calculation (required if radDistanceUnits='arcmin'). Defaults to None.
             pixelSize (float, optional): Pixel size in arcminutes (required if radDistanceUnits='arcmin'). Defaults to 0.5.
+            halo_mask (np.ndarray, optional): Pre-selected integer index array into the halo
+                catalogue. When provided, internal halo selection is skipped entirely.
+                Defaults to None.
 
         Returns:
             tuple: (radii, profiles) - 1D radii array and 2D profiles array.
         """
-        
+
         nPixels = array.shape[0]
         assert array.shape == (nPixels, nPixels), f"Array must be square, got shape: {array.shape}"
 

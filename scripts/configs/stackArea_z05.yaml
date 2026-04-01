@@ -16,7 +16,7 @@ stack:
 
   # Stacking radii expressed in comoving kpc/h.
   # For 2D runs these are automatically converted to arcmin via the cosmology.
-  min_radius: 200.0    # comoving kpc/h
+  min_radius: 0.0    # comoving kpc/h
   max_radius: 6000.0   # comoving kpc/h
   num_radii: 15        # number of linearly-spaced radial bins
 
@@ -32,6 +32,7 @@ stack:
   beam_size: 1.6    # arcmin FWHM Gaussian smoothing applied before 2-D stacking
                     # (set to 0 to disable smoothing)
 
+  sphere: false
   # Projection axis used both when building 3-D fields and when making 2-D maps.
   projection: 'yz'  # options: 'xy', 'xz', 'yz'
 

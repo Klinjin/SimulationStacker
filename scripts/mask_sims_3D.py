@@ -152,7 +152,8 @@ def main(path2config, verbose=True):
     colourmaps = ['hot', 'cool']
     colourmaps = ['hsv', 'twilight']
 
-    fig, (ax_tng, ax_simba) = plt.subplots(2, 1, figsize=(10, 10), sharex=True)
+    # fig, (ax_tng, ax_simba) = plt.subplots(2, 1, figsize=(10, 10), sharex=True)
+    fig, ax = plt.subplots(1, 1, figsize=(9, 7), sharex=True)
     
     t0 = time.time()
     for i, sim_type in enumerate(config['simulations']):
@@ -163,11 +164,11 @@ def main(path2config, verbose=True):
         if sim_type_name == 'IllustrisTNG':
             TNG_sims = sim_type['sims']
             colours = colourmap(np.linspace(0.2, 0.85, len(TNG_sims)))
-            ax = ax_tng
+            # ax = ax_tng
         if sim_type_name == 'SIMBA':
             SIMBA_sims = sim_type['sims']
             colours = colourmap(np.linspace(0.2, 0.85, len(SIMBA_sims)))
-            ax = ax_simba
+            # ax = ax_simba
 
         if verbose:
             print(f"Processing simulations of type: {sim_type_name}")
@@ -221,8 +222,8 @@ def main(path2config, verbose=True):
             kpcPerPixel = stacker.header['BoxSize'] / nPixels # kpc/h per pixel
             
             GroupMass_masked = haloes['GroupMass'][halo_mask]
-            # GroupRad_masked = haloes['GroupRad'][halo_mask] / kpcPerPixel # in pixels
-            GroupRad_masked = np.ones_like(GroupMass_masked) / kpcPerPixel * 1000 # in pixels, assuming 1 Mpc/h radius for all halos.
+            GroupRad_masked = haloes['GroupRad'][halo_mask] / kpcPerPixel # in pixels
+            # GroupRad_masked = np.ones_like(GroupMass_masked) / kpcPerPixel * 1000 # in pixels, assuming 1 Mpc/h radius for all halos.
             GroupPos_masked = np.round(haloes['GroupPos'][halo_mask] / kpcPerPixel).astype(int)
             
             fraction_0 = np.zeros_like(radii)
@@ -259,7 +260,9 @@ def main(path2config, verbose=True):
 
 
             # Plot the ratio:
-            ax.plot(radii * 1000, fraction_0 / fraction_1, label=sim_name, color=colours[j], lw=2, marker='o')
+            # ax.plot(radii * 1000, fraction_0 / fraction_1, label=sim_name, color=colours[j], lw=2, marker='o')
+            ax.plot(radii, fraction_0, label=sim_name, color=colours[j], lw=2, marker='o')
+            ax.plot(radii, fraction_1, label=sim_name, color=colours[j], lw=2, marker='s', linestyle='--')
             
             # If we want area-averaged CAP profile:
             # profiles0 = profiles0 / (np.pi*radii0**2)[:, np.newaxis]
@@ -296,24 +299,25 @@ def main(path2config, verbose=True):
     #     # Optionally also plot on ax2 if relevant
 
     # Configure left subplot (profiles0)
-    ax_tng.set_xlabel('R [kpc/h]', fontsize=18)
-    ax_tng.set_ylabel(rf'$\frac{{{pType}}}{{{pType2}}} \; / \; (\Omega_b / \Omega_m)$', fontsize=18)
+    # ax.set_xlabel('R [kpc/h]', fontsize=18)
+    ax.set_xlabel('R [virial radii]', fontsize=18)
+    # ax.set_ylabel(rf'$\frac{{{pType}}}{{{pType2}}} \; / \; (\Omega_b / \Omega_m)$', fontsize=18)
     # ax_tng.set_ylabel(r'$T_{kSZ}$ [$\mu K \rm{arcmin}^2$]', fontsize=18)
     # ax_tng.set_xlim(0.0, maxRadius * radDistance + 0.5)
-    ax_tng.legend(loc='best', fontsize=12)
-    ax_tng.grid(True)
+    ax.legend(loc='best', fontsize=12)
+    ax.grid(True)
     # ax_tng.set_title(f'{pType} {filterType} profiles at z={redshift}', fontsize=18)
     
     # Configure right subplot (profiles1)
     # ax_simba.set_xlabel('R [kpc/h]', fontsize=18)
-    ax_simba.set_ylabel(rf'$\frac{{\mathrm{{{pType}}}}}{{\mathrm{{{pType2}}}}} \; / \; (\Omega_b / \Omega_m)$', fontsize=18)
+    ax.set_ylabel(rf'$\frac{{\mathrm{{{pType}}}}}{{\mathrm{{{pType2}}}}} \; / \; (\Omega_b / \Omega_m)$', fontsize=18)
     # ax_simba.set_xlim(0.0, maxRadius * radDistance + 0.5)
-    ax_simba.legend(loc='best', fontsize=12)
-    ax_simba.grid(True)
+    # ax_simba.legend(loc='best', fontsize=12)
+    # ax_simba.grid(True)
     # ax_simba.set_title(f'{pType2} {filterType2} profiles at z={redshift}', fontsize=18)
     
     fig.tight_layout()
-    fig.savefig(figPath / f'{pType}_{pType2}_{figName}_z{redshift}_3Dremainder.{figType}', dpi=300) # type: ignore
+    fig.savefig(figPath / f'separate_{pType}_{pType2}_{figName}_z{redshift}_3Dremainder.{figType}', dpi=300) # type: ignore
     plt.close(fig)
     
     print(f'Done!!!, time taken: {time.time() - t0} seconds')

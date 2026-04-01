@@ -83,6 +83,7 @@ def main(path2config, verbose=True):
     radDistance = stack_config.get('rad_distance', 1.0)
     pType = stack_config.get('particle_type', 'tau')
     projection = stack_config.get('projection', 'xy')
+    use_subhalos = stack_config.get('use_subhalos', False)
 
     # maskHaloes and maskRadii will be set in the loop
     pixelSize = stack_config.get('pixel_size', 0.5) # in arcmin
@@ -156,9 +157,6 @@ def main(path2config, verbose=True):
                     stacker = SimulationStacker(sim_name, snapshot, z=redshift, 
                                                 simType=sim_type_name)
 
-                    radii0, profiles0 = stacker.stackMap(pType, filterType=filterType, minRadius=1.0, maxRadius=6.0, pixelSize=pixelSize, # type: ignore
-                                                         save=saveField, load=loadField, radDistance=radDistance,
-                                                         projection=projection, mask=maskHaloes, maskRad=maskRadii)
 
                     try:
                         OmegaBaryon = stacker.header['OmegaBaryon']
@@ -185,14 +183,16 @@ def main(path2config, verbose=True):
                                                 simType=sim_type_name, 
                                                 feedback=feedback)
                     
-                    radii0, profiles0 = stacker.stackMap(pType, filterType=filterType, minRadius=1.0, maxRadius=6.0, pixelSize=pixelSize, # type: ignore
-                                                         save=saveField, load=loadField, radDistance=radDistance,
-                                                         projection=projection, mask=maskHaloes, maskRad=maskRadii)
                     
                     OmegaBaryon = 0.048  # Default value for SIMBA
                     sim_name = sim_name_show
                 else:
                     raise ValueError(f"Unknown simulation type: {sim_type_name}")
+
+                radii0, profiles0 = stacker.stackMap(pType, filterType=filterType, minRadius=1.0, maxRadius=6.0, pixelSize=pixelSize, # type: ignore
+                                        save=saveField, load=loadField, radDistance=radDistance,
+                                        use_subhalos=use_subhalos,
+                                        projection=projection, mask=maskHaloes, maskRad=maskRadii)
 
                 # Plotting
                 T_CMB = 2.7255

@@ -178,6 +178,7 @@ def main(path2config, verbose=True):
                     OmegaBaryon = 0.0456  # Default value for Illustris-1
                 
                 cosmo = FlatLambdaCDM(H0=100 * stacker.header['HubbleParam'], Om0=stacker.header['Omega0'], Tcmb0=2.7255 * u.K, Ob0=OmegaBaryon)                    
+                h_tng = stacker.header['HubbleParam']
                 
 
             elif sim_type_name == 'SIMBA':
@@ -227,26 +228,27 @@ def main(path2config, verbose=True):
             #                                      save=saveField, load=loadField, radDistance=radDistance,
             #                                      projection=projection)
 
-            radii1, profiles1 = stacker.stackMap(pType, filterType=filterType, minRadius=minRadius, 
-                                                 maxRadius=maxRadius, numRadii=nRadii, 
-                                                 pixelSize=pixelSize, beamSize=beamSize,
-                                                 save=saveField, load=loadField, radDistance=radDistance,
-                                                 projection=projection)
+            # radii1, profiles1 = stacker.stackMap(pType, filterType=filterType, minRadius=minRadius, 
+            #                                      maxRadius=maxRadius, numRadii=nRadii, 
+            #                                      pixelSize=pixelSize, beamSize=beamSize,
+            #                                      save=saveField, load=loadField, radDistance=radDistance,
+            #                                      projection=projection)
             # profiles1 = mass_to_temp(profiles1 * u.Msun, z=redshift, cosmology=cosmo) # convert to kSZ
                                                     
-            # minRad_mpch = arcmin_to_comoving(minRadius, redshift, cosmo) / 1000.0
-            # maxRad_mpch = arcmin_to_comoving(maxRadius, redshift, cosmo) / 1000.0
+            minRad_mpch = arcmin_to_comoving(minRadius, redshift, cosmo) / 1000.0
+            maxRad_mpch = arcmin_to_comoving(maxRadius, redshift, cosmo) / 1000.0
+            radDistance = 1000.0 # convert from Mpc to kpc
             
-            # theta_arcmin = comoving_to_arcmin(stacker.header['BoxSize'], redshift, cosmo=cosmo)
-            # # pixelSize = 0.2
-            # nPixels = np.ceil(theta_arcmin / pixelSize).astype(int)
-            # print(f"theta_arcmin: {theta_arcmin}, nPixels: {nPixels}")
+            theta_arcmin = comoving_to_arcmin(stacker.header['BoxSize'], redshift, cosmo=cosmo)
+            # pixelSize = 0.2
+            nPixels = np.ceil(theta_arcmin / pixelSize).astype(int)
+            print(f"theta_arcmin: {theta_arcmin}, nPixels: {nPixels}")
 
-            # # print(f"minRad_mpch: {minRad_mpch}, maxRad_mpch: {maxRad_mpch}")
-            # radii1, profiles1 = stacker.stackField(pType, filterType=filterType, minRadius=minRad_mpch, 
-            #                                        maxRadius=maxRad_mpch, numRadii=nRadii, # type: ignore
-            #                                        save=saveField, load=loadField, radDistance=radDistance, nPixels=nPixels,
-            #                                        projection=projection)
+            print(f"minRad_mpch: {minRad_mpch}, maxRad_mpch: {maxRad_mpch}")
+            radii1, profiles1 = stacker.stackField(pType, filterType=filterType, minRadius=minRad_mpch, 
+                                                   maxRadius=maxRad_mpch, numRadii=nRadii, # type: ignore
+                                                   save=saveField, load=loadField, radDistance=radDistance, nPixels=nPixels,
+                                                   projection=projection)
 
             h = stacker.header['HubbleParam']
             # profiles1 = ksz_from_delta_sigma(profiles1 * u.Msun / u.kpc**2 * h**2, redshift, delta_sigma_is_comoving=True, cosmology=cosmo) # convert to kSZ
@@ -314,18 +316,18 @@ def main(path2config, verbose=True):
         # r_data = data['theta_arcmins']
         # profile_data = data['prof']
         # profile_err = data['prof_err']
-        r_data = data['rp'] * radDistance# / 0.6774 # in kpc
-        profile_data = deepcopy(data['ds']) * u.Msun / u.pc**2 * (radDistance)**2 # in Msun/arcmin^2
-        ds_measurement_cov = data['cov'] * (u.Msun / u.pc**2)**2 # in uK
-        profile_err = np.sqrt(np.diag(ds_measurement_cov)) * (radDistance)**2
+        r_data = data['rp'] * radDistance * h_tng # / 0.6774 # in kpc
+        profile_data = deepcopy(data['ds']) * u.Msun / u.pc**2 * (radDistance)**2 / h_tng # in Msun / pc^2
+        ds_measurement_cov = data['cov'] * (u.Msun / u.pc**2 * (radDistance)**2 / h_tng)**2 # in Msun^2 / pc^4
+        profile_err = np.sqrt(np.diag(ds_measurement_cov))# * (radDistance)**2
         print(r_data)
         print(profile_data)
         # data = np.load(data_path)
         # r_data = data['theta_arcmins']
         # profile_data = data['prof']
         # profile_err = np.sqrt(np.diag(data['cov']))
-        ax_tng.errorbar(r_data, profile_data, yerr=profile_err, fmt='s', color='k', label=plot_config['data_label'], markersize=8)
-        ax_simba.errorbar(r_data, profile_data, yerr=profile_err, fmt='s', color='k', label=plot_config['data_label'], markersize=8)
+        ax_tng.errorbar(r_data, profile_data, yerr=profile_err, fmt='s', color='k', label=plot_config['data_label'], markersize=5)
+        ax_simba.errorbar(r_data, profile_data, yerr=profile_err, fmt='s', color='k', label=plot_config['data_label'], markersize=5)
 
     # ax.set_xlabel('Radius (arcmin)')
     # ax.set_ylabel('f')
@@ -366,7 +368,7 @@ def main(path2config, verbose=True):
     fig.savefig(figPath / f'{pType}_{pType2}_{figName}_z{redshift}_{filterType}_{filterType2}_ratio2.{figType}', dpi=300) # type: ignore
     plt.close(fig)
     
-    print('Done!!!')
+    print('Done!!! Time taken: ', time.time() - t0)
 
 if __name__ == "__main__":
     

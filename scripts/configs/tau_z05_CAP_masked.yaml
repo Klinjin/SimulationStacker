@@ -10,6 +10,7 @@ stack:
   mask_haloes: false
   mask_radii: 3.0 # Number of virial radii to mask out for haloes. In units of R200c
   pixel_size: 0.5 # in arcmin
+  use_subhalos: true # Whether to use subhalos for selection (SHAM) instead of halos (mass cut)
 
 plot:
   plot_data: true
@@ -26,18 +27,18 @@ plot:
 simulations:
   - sim_type: 'SIMBA'
     sims:
-      - name: 'm50n512'
-        snapshot: 125
-        feedback: 's50'
+      # - name: 'm50n512'
+      #   snapshot: 125
+      #   feedback: 's50'
       - name: 'm50n512'
         snapshot: 125
         feedback: 's50noagn'
       - name: 'm50n512'
         snapshot: 125
         feedback: 's50nox'
-      - name: 'm50n512'
-        snapshot: 125
-        feedback: 's50nojet'
+      # - name: 'm50n512'
+      #   snapshot: 125
+      #   feedback: 's50nojet'
       - name: 'm50n512'
         snapshot: 125
         feedback: 's50nofb'
@@ -54,5 +55,5 @@ simulations:
       #   snapshot: 67
       - name: 'Illustris-1'
         snapshot: 103
-      - name: 'Illustris-2'
-        snapshot: 103
+      # - name: 'Illustris-2'
+      #   snapshot: 103

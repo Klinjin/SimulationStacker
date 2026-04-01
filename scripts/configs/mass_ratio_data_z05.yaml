@@ -33,7 +33,7 @@ plot:
   # data_label: 'Hadzhiyska 2024 pz1'
   fig_path: '../figures/'
   fig_name: 'halos_yz_data'
-  fig_type: 'png'
+  fig_type: 'pdf'
   plot_error_bars: true
 
 
@@ -60,15 +60,15 @@ simulations:
         feedback: 's50'
   - sim_type: 'IllustrisTNG'
     sims:
-      - name: 'TNG100-1'
-        snapshot: 67
+      # - name: 'TNG100-1'
+      #   snapshot: 67
       - name: 'TNG300-1'
         snapshot: 67
-      - name: 'TNG300-2'
-        snapshot: 67
+      # - name: 'TNG300-2'
+      #   snapshot: 67
       # - name: 'TNG50-3'
       #   snapshot: 67
       - name: 'Illustris-1'
         snapshot: 103
-      - name: 'Illustris-2'
-        snapshot: 103
+      # - name: 'Illustris-2'
+      #   snapshot: 103

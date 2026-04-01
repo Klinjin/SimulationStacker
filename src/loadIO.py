@@ -97,12 +97,54 @@ def load_subhalos(sim_path, snapshot, sim_type, sim_name=None, header=None):
         
         subhalo_path = sim_path + 'catalogs/' + sim_name + '_' + str(snapshot) + '.hdf5'
         subhaloes = {}
+        # CAESAR identifies galaxies with a 6D Friends-of-Friends (6DFOF)
+        # algorithm that runs only on baryonic particles (gas + stars + BH).
+        # DM is excluded from the galaxy finder by design, so
+        # galaxy_data['dicts']['masses.total'] is a purely baryonic mass
+        # (~10^10–10^11 Msun) — NOT analogous to TNG's SubhaloMass, which
+        # includes all gravitationally bound particles (DM + baryons).
         subhaloes_cat = load_as_dict(subhalo_path, 'galaxy_data')
-        
-        subhaloes['SubhaloPos'] = subhaloes_cat['pos'] * header['HubbleParam'] # kpc/h
-        subhaloes['SubhaloMass'] = subhaloes_cat['dicts']['masses.total'] * header['HubbleParam']  # Msun/h
-        subhaloes['SubhaloGrNr'] = subhaloes_cat['parent_halo_index']  # Assuming this is the correct key
-        subhaloes['SubhaloID'] = subhaloes_cat['GroupID']
+
+        # parent_halo_index: confirmed in CAESAR docs and source as the index
+        # into halo_data for each galaxy's parent FoF halo.
+        parent_idx = subhaloes_cat['parent_halo_index']
+
+        subhaloes['SubhaloPos']   = subhaloes_cat['pos'] * header['HubbleParam']  # kpc/h
+
+        # SubhaloMass proxy for SHAM: baryonic mass + DM within a 30 kpc aperture.
+        #
+        # There is no CAESAR equivalent to TNG's SubhaloMass (SUBFIND total
+        # bound mass including DM).  Three options were considered:
+        #
+        #   Option 1 — baryonic mass only (masses.total, ~10^11 Msun):
+        #     Unique per galaxy; allows satellite selection; but 100× lower
+        #     than the mass-cut selection scale, so SHAM selects a different
+        #     population entirely.
+        #
+        #   Option 2 — baryonic + 30 kpc aperture DM (masses.total + masses.dm_30kpc):
+        #     Still unique per galaxy; includes a local DM contribution that
+        #     partially captures the galaxy's DM environment; physically
+        #     closer to SUBFIND's satellite-subhalo mass than baryons alone.
+        #     Currently in use (chosen as the best available approximation), while
+        #     SHAM selection in stack_on_array uses SubhaloMStar (stellar mass)
+        #
+        #   Option 3 — parent FoF halo mass:
+        #     Right scale for centrals (~10^13 Msun) but degenerate — all
+        #     galaxies in the same halo share the same mass, so SHAM selects
+        #     all galaxies from the few most massive halos rather than a
+        #     representative mix of centrals and satellites.
+        #
+        # NOTE: dm_30kpc is a spherical aperture sum, not a bound-mass
+        # calculation.  For deeply embedded satellites the aperture may
+        # include DM belonging to the host rather than the satellite itself.
+        # This is a known limitation with no better alternative in CAESAR.
+        subhaloes['SubhaloMass']  = (
+            subhaloes_cat['dicts']['masses.dm_30kpc'] +
+            subhaloes_cat['dicts']['masses.total']
+        ) * header['HubbleParam']                                                   # Msun/h
+
+        subhaloes['SubhaloGrNr']  = parent_idx                                     # confirmed key
+        subhaloes['SubhaloID']    = subhaloes_cat['GroupID']
         subhaloes['SubhaloMStar'] = subhaloes_cat['dicts']['masses.stellar'] * header['HubbleParam']  # Msun/h
 
     return subhaloes
