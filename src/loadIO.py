@@ -56,7 +56,7 @@ def load_halos(sim_path, snapshot, sim_type, sim_name=None, header=None):
         sub_h = haloes_cat['GroupFirstSub'][:]
         central_subhalo_ids = sub_h[np.where(sub_h >= 0)]
 
-        fields = ['SubhaloMass','SubhaloMassInMaxRadType','SubhaloVmaxRad', 'SubhaloMassInMaxRad','SubhaloPos','SubhaloGrNr','SubhaloLen']
+        fields = ['SubhaloMass','SubhaloMassInMaxRadType','SubhaloVmaxRad', 'SubhaloMassInRadType','SubhaloPos','SubhaloGrNr','SubhaloLen']
         subhalos = il.groupcat.loadSubhalos(sim_path, snapshot, fields=fields)
         haloes['SubhaloMass']   = subhalos['SubhaloMass'][central_subhalo_ids] * 1e10   
         haloes['SubhaloPos'] = subhalos['SubhaloPos'][central_subhalo_ids]
