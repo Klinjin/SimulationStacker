@@ -56,13 +56,14 @@ def load_halos(sim_path, snapshot, sim_type, sim_name=None, header=None):
         sub_h = haloes_cat['GroupFirstSub'][:]
         central_subhalo_ids = sub_h[np.where(sub_h >= 0)]
 
-        fields = ['SubhaloMass','SubhaloMassInMaxRadType','SubhaloVmaxRad', 'SubhaloMassInRadType','SubhaloPos','SubhaloGrNr','SubhaloLen']
+        fields = ['SubhaloMass','SubhaloMassInMaxRadType','SubhaloMassType', 'SubhaloMassInRadType','SubhaloPos','SubhaloGrNr','SubhaloLen']
         subhalos = il.groupcat.loadSubhalos(sim_path, snapshot, fields=fields)
         haloes['SubhaloMass']   = subhalos['SubhaloMass'][central_subhalo_ids] * 1e10   
         haloes['SubhaloPos'] = subhalos['SubhaloPos'][central_subhalo_ids]
         haloes['SubhaloGrNr'] = subhalos['SubhaloGrNr'][central_subhalo_ids]
         haloes['SubhaloStellarMassInRadType'] = subhalos['SubhaloMassInRadType'][central_subhalo_ids,4] * 1e10
-        
+        haloes['SubhaloMStar'] = subhalos['SubhaloMassType'][central_subhalo_ids, 4] * 1e10  # Stellar mass in Msun/h
+
         grp_ids = subhalos['SubhaloGrNr'][central_subhalo_ids]
         haloes['GroupMass'] = haloes_cat['Group_M_Crit500'][grp_ids] * 1e10  # Convert to Msun/h
     del haloes_cat 

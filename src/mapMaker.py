@@ -4,7 +4,6 @@ import illustris_python as il
 # from tools import numba_tsc_3D, hist2d_numba_seq
 # from stacker import SimulationStacker
 from utils import fft_smoothed_map
-from halos import select_massive_halos, halo_ind
 from filters import total_mass, delta_sigma, CAP, CAP_from_mass, DSigma_from_mass
 from loadIO import snap_path, load_halos, load_subsets, load_subset, load_data, save_data
 from astropy.cosmology import FlatLambdaCDM, Planck18

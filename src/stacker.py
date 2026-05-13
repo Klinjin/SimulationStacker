@@ -85,7 +85,7 @@ class SimulationStacker(object):
         
         # self.Lbox = self.header['BoxSize'] # kpc/h
         self.h = self.header['HubbleParam'] # Hubble parameter
-        self.z = self.header['Redshift'] if self.simType == 'IllustrisTNG' else 0.47
+        self.z = self.header['Redshift'] 
         self.fb = self.header['OmegaBaryon'] / self.header['Omega0']
 
         # Define cosmology
@@ -135,7 +135,7 @@ class SimulationStacker(object):
         if mask:
             haloes = self.loadHalos()
             haloMass = haloes['GroupMass']
-            StellarMass = haloes['SubhaloStellarMassInRadType']
+            StellarMass = haloes['SubhaloMStar']
             
             halo_mask = select_abundance_halos_mask(StellarMass, self.header['BoxSize'], upper_mass_bound=10**(13.22), number_density=5e14) # TODO: make this configurable from user input
             haloes['GroupMass'] = haloes['GroupMass'][halo_mask]
@@ -179,13 +179,7 @@ class SimulationStacker(object):
         """        
             
         # Use stored cosmology
-
-        # Get distance to the snapshot redshift
-        # dA = cosmo.angular_diameter_distance(z).to(u.kpc).value
-        # dA *= self.header['HubbleParam']  # Convert to kpc/h
-        
         # Get the box size in angular units.
-        # theta_arcmin = np.degrees(self.header['BoxSize'] / dA) * 60  # Convert to arcminutes # TODO: this is wrong for sure!! Change ASAP
         theta_arcmin = comoving_to_arcmin(self.header['BoxSize'], self.z, cosmo=self.cosmo)
         print(f"Box size: {self.header['BoxSize']} kpc/h , Map size at z={self.z}: {theta_arcmin:.2f} arcmin")
 
@@ -215,7 +209,6 @@ class SimulationStacker(object):
             save = False # Don't save the map if we aren't convolving it, since it's just the same as the field.
         else:
             saveField = False
-            
 
         # If we don't have the map pre-saved, we then make the map. 
         # Since this is before doing beam convolution, this step is fine to do using makeField.
@@ -306,8 +299,6 @@ class SimulationStacker(object):
             maskRad (float, optional): Number of virial radii around each halo to keep unmasked. Only used if mask=True.
                 Defaults to 3x virial radii.
             subtract_mean (bool, optional): If True, subtracts the mean of the map before stacking. Defaults to False.
-            use_subhalos (bool, optional): If True, uses subhalos in the stacking process. Defaults to False.
-            halo_mass_avg (float, optional): Average halo mass for selecting halos. Defaults to 10**(13.22).
             halo_mass_upper (float, optional): Upper mass bound for selecting halos. Defaults to 5*10**(14).
 
         Returns:
@@ -394,12 +385,7 @@ class SimulationStacker(object):
             maskRad (float, optional): Number of virial radii around each halo to keep unmasked. Only used if mask=True. 
                 Defaults to 3x virial radii.
             subtract_mean (bool, optional): If True, subtracts the mean of the field before stacking. Defaults to False.
-            use_subhalos (bool, optional): If True, uses subhalos in the stacking. Defaults to False.
-            halo_mass_avg (float, optional): Average halo mass for subhalo selection. Defaults to 10^(13.22).
             halo_mass_upper (float, optional): Upper halo mass limit for subhalo selection. Defaults to 5*10^(14).
-            halo_mask (np.ndarray, optional): Pre-selected integer index array into the halo
-                catalogue. When provided, internal halo selection is skipped entirely.
-                Defaults to None.
         Raises:
             NotImplementedError: If pType is not one of the ones listed above.
 
@@ -490,9 +476,9 @@ class SimulationStacker(object):
 
         # Load the halo catalog and select halos
         haloes = self.loadHalos()
-        haloMass = haloes['GroupMass']  # in 1e10 Msun/h
+        haloMass = haloes['GroupMass']  # in Msun/h
         haloPos = haloes['SubhaloPos']
-        subhaloStellarMass = haloes['SubhaloStellarMassInRadType']  # in 1e10 Msun/h
+        subhaloStellarMass = haloes['SubhaloMStar']  # in Msun/h
 
         halo_mask = select_abundance_halos_mask(subhaloStellarMass, self.header['BoxSize'], halo_number_density, halo_mass_upper)
         self.halo_mass_selected = haloMass[halo_mask]  # Store for reference

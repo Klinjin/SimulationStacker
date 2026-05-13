@@ -1,0 +1,283 @@
+Job started at: Tue Mar 31 09:33:15 PM PDT 2026
+Running seff for job 50801595...
+Job ID: 50801595
+Cluster: perlmutter
+User/Group: lindajin/lindajin
+State: RUNNING
+Nodes: 3
+Cores per node: 256
+CPU Utilized: 00:00:00
+CPU Efficiency: 0.00% of 01:42:24 core-walltime
+Job Wall-clock time: 00:00:08
+Memory Utilized: 0.00 MB
+Memory Efficiency: 0.00% of 1.40 TB (476.37 GB/node)
+WARNING: Efficiency statistics can only be obtained after the job has ended as seff tool is based on the accounting database data.
+Number of MPI tasks: 12
+CPUs per task: 64
+OpenMP threads per task: 32
+Config: /pscratch/sd/l/lindajin/SimulationStacker/scripts/configs/mass_ratio_data_z05.yaml
+  [rank 2] Processing L50n512_SB35[457] (snapshot 74)
+Box size: 50000.0 kpc/h , Map size at z=0.4669873650209315: 128.80 arcmin
+Data file '/pscratch/sd/l/lindajin/CAMELS/IllustrisTNG/L50n512_SB35/SB35_457/data/ionized_gas_644_yz_2Dmap.npy' not found. Please compute it first.
+Computing the map instead...
+Saving field instead of map, since beamSize is None.
+Number of halos selected: 300 at Mass threshold:  3.22e+12 ~  6.93e+09 Msun/h
+Box size: 50000.0 kpc/h , Map size at z=0.4669873650209315: 128.80 arcmin
+Data file '/pscratch/sd/l/lindajin/CAMELS/IllustrisTNG/L50n512_SB35/SB35_457/data/total_644_yz_2Dmap.npy' not found. Please compute it first.
+Computing the map instead...
+Saving field instead of map, since beamSize is None.
+Number of halos selected: 300 at Mass threshold:  3.22e+12 ~  6.93e+09 Msun/h
+  [rank 2] Processing L50n512_SB35[285] (snapshot 74)
+Box size: 50000.0 kpc/h , Map size at z=0.4669873650209315: 137.00 arcmin
+Data file '/pscratch/sd/l/lindajin/CAMELS/IllustrisTNG/L50n512_SB35/SB35_285/data/ionized_gas_685_yz_2Dmap.npy' not found. Please compute it first.
+Computing the map instead...
+Saving field instead of map, since beamSize is None.
+Number of halos selected: 300 at Mass threshold:  1.20e+13 ~  2.43e+11 Msun/h
+Box size: 50000.0 kpc/h , Map size at z=0.4669873650209315: 137.00 arcmin
+Data file '/pscratch/sd/l/lindajin/CAMELS/IllustrisTNG/L50n512_SB35/SB35_285/data/total_685_yz_2Dmap.npy' not found. Please compute it first.
+Computing the map instead...
+Saving field instead of map, since beamSize is None.
+Number of halos selected: 300 at Mass threshold:  1.20e+13 ~  2.43e+11 Msun/h
+  [rank 2] Done. Elapsed: 20.6 s
+Config: /pscratch/sd/l/lindajin/SimulationStacker/scripts/configs/mass_ratio_data_z05.yaml
+  [rank 4] Processing L50n512_SB35[864] (snapshot 74)
+Box size: 50000.0 kpc/h , Map size at z=0.4674218694859129: 145.52 arcmin
+Data file '/pscratch/sd/l/lindajin/CAMELS/IllustrisTNG/L50n512_SB35/SB35_864/data/ionized_gas_728_yz_2Dmap.npy' not found. Please compute it first.
+Computing the map instead...
+Saving field instead of map, since beamSize is None.
+Number of halos selected: 300 at Mass threshold:  2.32e+14 ~  1.35e+12 Msun/h
+Box size: 50000.0 kpc/h , Map size at z=0.4674218694859129: 145.52 arcmin
+Data file '/pscratch/sd/l/lindajin/CAMELS/IllustrisTNG/L50n512_SB35/SB35_864/data/total_728_yz_2Dmap.npy' not found. Please compute it first.
+Computing the map instead...
+Saving field instead of map, since beamSize is None.
+Number of halos selected: 300 at Mass threshold:  2.32e+14 ~  1.35e+12 Msun/h
+  [rank 4] Processing L50n512_SB35[65] (snapshot 74)
+Config: /pscratch/sd/l/lindajin/SimulationStacker/scripts/configs/mass_ratio_data_z05.yaml
+  [rank 1] Processing L50n512_SB35[563] (snapshot 74)
+Box size: 50000.0 kpc/h , Map size at z=0.4669873650209315: 140.87 arcmin
+Data file '/pscratch/sd/l/lindajin/CAMELS/IllustrisTNG/L50n512_SB35/SB35_563/data/ionized_gas_705_yz_2Dmap.npy' not found. Please compute it first.
+Computing the map instead...
+Saving field instead of map, since beamSize is None.
+Number of halos selected: 300 at Mass threshold:  4.56e+13 ~  5.35e+11 Msun/h
+Box size: 50000.0 kpc/h , Map size at z=0.4669873650209315: 140.87 arcmin
+Data file '/pscratch/sd/l/lindajin/CAMELS/IllustrisTNG/L50n512_SB35/SB35_563/data/total_705_yz_2Dmap.npy' not found. Please compute it first.
+Computing the map instead...
+Saving field instead of map, since beamSize is None.
+Number of halos selected: 300 at Mass threshold:  4.56e+13 ~  5.35e+11 Msun/h
+  [rank 1] Processing L50n512_SB35[501] (snapshot 74)
+Box size: 50000.0 kpc/h , Map size at z=0.46768840659006394: 132.57 arcmin
+Data file '/pscratch/sd/l/lindajin/CAMELS/IllustrisTNG/L50n512_SB35/SB35_65/data/ionized_gas_663_yz_2Dmap.npy' not found. Please compute it first.
+Computing the map instead...
+Saving field instead of map, since beamSize is None.
+Number of halos selected: 300 at Mass threshold:  2.89e+13 ~  2.50e+11 Msun/h
+Box size: 50000.0 kpc/h , Map size at z=0.46768840659006394: 132.57 arcmin
+Data file '/pscratch/sd/l/lindajin/CAMELS/IllustrisTNG/L50n512_SB35/SB35_65/data/total_663_yz_2Dmap.npy' not found. Please compute it first.
+Computing the map instead...
+Saving field instead of map, since beamSize is None.
+Number of halos selected: 300 at Mass threshold:  2.89e+13 ~  2.50e+11 Msun/h
+  [rank 4] Done. Elapsed: 20.2 s
+Box size: 50000.0 kpc/h , Map size at z=0.4667311356050241: 133.50 arcmin
+Data file '/pscratch/sd/l/lindajin/CAMELS/IllustrisTNG/L50n512_SB35/SB35_501/data/ionized_gas_668_yz_2Dmap.npy' not found. Please compute it first.
+Computing the map instead...
+Saving field instead of map, since beamSize is None.
+Number of halos selected: 300 at Mass threshold:  2.41e+13 ~  1.62e+11 Msun/h
+Box size: 50000.0 kpc/h , Map size at z=0.4667311356050241: 133.50 arcmin
+Data file '/pscratch/sd/l/lindajin/CAMELS/IllustrisTNG/L50n512_SB35/SB35_501/data/total_668_yz_2Dmap.npy' not found. Please compute it first.
+Computing the map instead...
+Saving field instead of map, since beamSize is None.
+Number of halos selected: 300 at Mass threshold:  2.41e+13 ~  1.62e+11 Msun/h
+  [rank 1] Done. Elapsed: 20.6 s
+Config: /pscratch/sd/l/lindajin/SimulationStacker/scripts/configs/mass_ratio_data_z05.yaml
+  [rank 8] Processing L50n512_SB35[859] (snapshot 74)
+Box size: 50000.0 kpc/h , Map size at z=0.4674218694859129: 139.78 arcmin
+Data file '/pscratch/sd/l/lindajin/CAMELS/IllustrisTNG/L50n512_SB35/SB35_859/data/ionized_gas_699_yz_2Dmap.npy' not found. Please compute it first.
+Computing the map instead...
+Saving field instead of map, since beamSize is None.
+Number of halos selected: 300 at Mass threshold:  4.99e+13 ~  5.51e+11 Msun/h
+Box size: 50000.0 kpc/h , Map size at z=0.4674218694859129: 139.78 arcmin
+Data file '/pscratch/sd/l/lindajin/CAMELS/IllustrisTNG/L50n512_SB35/SB35_859/data/total_699_yz_2Dmap.npy' not found. Please compute it first.
+Computing the map instead...
+Saving field instead of map, since beamSize is None.
+Number of halos selected: 300 at Mass threshold:  4.99e+13 ~  5.51e+11 Msun/h
+  [rank 8] Done. Elapsed: 27.0 s
+Config: /pscratch/sd/l/lindajin/SimulationStacker/scripts/configs/mass_ratio_data_z05.yaml
+  [rank 5] Processing L50n512_SB35[61] (snapshot 74)
+Box size: 50000.0 kpc/h , Map size at z=0.467812354343041: 137.40 arcmin
+Data file '/pscratch/sd/l/lindajin/CAMELS/IllustrisTNG/L50n512_SB35/SB35_61/data/ionized_gas_688_yz_2Dmap.npy' not found. Please compute it first.
+Computing the map instead...
+Saving field instead of map, since beamSize is None.
+Number of halos selected: 300 at Mass threshold:  3.85e+13 ~  4.68e+11 Msun/h
+Box size: 50000.0 kpc/h , Map size at z=0.467812354343041: 137.40 arcmin
+Data file '/pscratch/sd/l/lindajin/CAMELS/IllustrisTNG/L50n512_SB35/SB35_61/data/total_688_yz_2Dmap.npy' not found. Please compute it first.
+Computing the map instead...
+Saving field instead of map, since beamSize is None.
+Number of halos selected: 300 at Mass threshold:  3.85e+13 ~  4.68e+11 Msun/h
+  [rank 5] Processing L50n512_SB35[191] (snapshot 74)
+Config: /pscratch/sd/l/lindajin/SimulationStacker/scripts/configs/mass_ratio_data_z05.yaml
+  [rank 3] Processing L50n512_SB35[209] (snapshot 74)
+Box size: 50000.0 kpc/h , Map size at z=0.46611874202394454: 131.48 arcmin
+Data file '/pscratch/sd/l/lindajin/CAMELS/IllustrisTNG/L50n512_SB35/SB35_209/data/ionized_gas_658_yz_2Dmap.npy' not found. Please compute it first.
+Computing the map instead...
+Saving field instead of map, since beamSize is None.
+Number of halos selected: 300 at Mass threshold:  1.45e+13 ~  1.14e+11 Msun/h
+Box size: 50000.0 kpc/h , Map size at z=0.46611874202394454: 131.48 arcmin
+Data file '/pscratch/sd/l/lindajin/CAMELS/IllustrisTNG/L50n512_SB35/SB35_209/data/total_658_yz_2Dmap.npy' not found. Please compute it first.
+Computing the map instead...
+Saving field instead of map, since beamSize is None.
+Number of halos selected: 300 at Mass threshold:  1.45e+13 ~  1.14e+11 Msun/h
+  [rank 3] Processing L50n512_SB35[178] (snapshot 74)
+Config: /pscratch/sd/l/lindajin/SimulationStacker/scripts/configs/mass_ratio_data_z05.yaml
+  [rank 9] Processing L50n512_SB35[451] (snapshot 74)
+Box size: 50000.0 kpc/h , Map size at z=0.4669873650209315: 142.06 arcmin
+Data file '/pscratch/sd/l/lindajin/CAMELS/IllustrisTNG/L50n512_SB35/SB35_451/data/ionized_gas_711_yz_2Dmap.npy' not found. Please compute it first.
+Computing the map instead...
+Saving field instead of map, since beamSize is None.
+Number of halos selected: 300 at Mass threshold:  3.57e+13 ~  6.08e+11 Msun/h
+Box size: 50000.0 kpc/h , Map size at z=0.4669873650209315: 142.06 arcmin
+Data file '/pscratch/sd/l/lindajin/CAMELS/IllustrisTNG/L50n512_SB35/SB35_451/data/total_711_yz_2Dmap.npy' not found. Please compute it first.
+Computing the map instead...
+Saving field instead of map, since beamSize is None.
+Number of halos selected: 300 at Mass threshold:  3.57e+13 ~  6.08e+11 Msun/h
+  [rank 9] Done. Elapsed: 27.0 s
+Box size: 50000.0 kpc/h , Map size at z=0.4669873650209315: 146.04 arcmin
+Data file '/pscratch/sd/l/lindajin/CAMELS/IllustrisTNG/L50n512_SB35/SB35_191/data/ionized_gas_731_yz_2Dmap.npy' not found. Please compute it first.
+Computing the map instead...
+Saving field instead of map, since beamSize is None.
+Number of halos selected: 300 at Mass threshold:  3.83e+13 ~  1.26e+12 Msun/h
+Box size: 50000.0 kpc/h , Map size at z=0.4669873650209315: 146.04 arcmin
+Data file '/pscratch/sd/l/lindajin/CAMELS/IllustrisTNG/L50n512_SB35/SB35_191/data/total_731_yz_2Dmap.npy' not found. Please compute it first.
+Computing the map instead...
+Saving field instead of map, since beamSize is None.
+Number of halos selected: 300 at Mass threshold:  3.83e+13 ~  1.26e+12 Msun/h
+  [rank 5] Done. Elapsed: 20.1 s
+Box size: 50000.0 kpc/h , Map size at z=0.46760118251159866: 136.35 arcmin
+Data file '/pscratch/sd/l/lindajin/CAMELS/IllustrisTNG/L50n512_SB35/SB35_178/data/ionized_gas_682_yz_2Dmap.npy' not found. Please compute it first.
+Computing the map instead...
+Saving field instead of map, since beamSize is None.
+Number of halos selected: 300 at Mass threshold:  6.80e+13 ~  8.02e+11 Msun/h
+Box size: 50000.0 kpc/h , Map size at z=0.46760118251159866: 136.35 arcmin
+Data file '/pscratch/sd/l/lindajin/CAMELS/IllustrisTNG/L50n512_SB35/SB35_178/data/total_682_yz_2Dmap.npy' not found. Please compute it first.
+Computing the map instead...
+Saving field instead of map, since beamSize is None.
+Number of halos selected: 300 at Mass threshold:  6.80e+13 ~  8.02e+11 Msun/h
+  [rank 3] Done. Elapsed: 20.6 s
+Config: /pscratch/sd/l/lindajin/SimulationStacker/scripts/configs/mass_ratio_data_z05.yaml
+  [rank 11] Processing L50n512_SB35[569] (snapshot 74)
+Box size: 50000.0 kpc/h , Map size at z=0.46611874202394454: 130.18 arcmin
+Data file '/pscratch/sd/l/lindajin/CAMELS/IllustrisTNG/L50n512_SB35/SB35_569/data/ionized_gas_651_yz_2Dmap.npy' not found. Please compute it first.
+Computing the map instead...
+Saving field instead of map, since beamSize is None.
+Number of halos selected: 300 at Mass threshold:  5.28e+12 ~  4.73e+10 Msun/h
+Box size: 50000.0 kpc/h , Map size at z=0.46611874202394454: 130.18 arcmin
+Data file '/pscratch/sd/l/lindajin/CAMELS/IllustrisTNG/L50n512_SB35/SB35_569/data/total_651_yz_2Dmap.npy' not found. Please compute it first.
+Computing the map instead...
+Saving field instead of map, since beamSize is None.
+Number of halos selected: 300 at Mass threshold:  5.28e+12 ~  4.73e+10 Msun/h
+  [rank 11] Done. Elapsed: 27.0 s
+Config: /pscratch/sd/l/lindajin/SimulationStacker/scripts/configs/mass_ratio_data_z05.yaml
+  [rank 6] Processing L50n512_SB35[447] (snapshot 74)
+Box size: 50000.0 kpc/h , Map size at z=0.4674218694859129: 145.97 arcmin
+Data file '/pscratch/sd/l/lindajin/CAMELS/IllustrisTNG/L50n512_SB35/SB35_447/data/ionized_gas_730_yz_2Dmap.npy' not found. Please compute it first.
+Computing the map instead...
+Saving field instead of map, since beamSize is None.
+Number of halos selected: 300 at Mass threshold:  1.99e+14 ~  6.97e+11 Msun/h
+Box size: 50000.0 kpc/h , Map size at z=0.4674218694859129: 145.97 arcmin
+Data file '/pscratch/sd/l/lindajin/CAMELS/IllustrisTNG/L50n512_SB35/SB35_447/data/total_730_yz_2Dmap.npy' not found. Please compute it first.
+Computing the map instead...
+Saving field instead of map, since beamSize is None.
+Number of halos selected: 300 at Mass threshold:  1.99e+14 ~  6.97e+11 Msun/h
+  [rank 6] Processing L50n512_SB35[476] (snapshot 74)
+Config: /pscratch/sd/l/lindajin/SimulationStacker/scripts/configs/mass_ratio_data_z05.yaml
+  [rank 10] Processing L50n512_SB35[919] (snapshot 74)
+Box size: 50000.0 kpc/h , Map size at z=0.4669873650209315: 143.35 arcmin
+Data file '/pscratch/sd/l/lindajin/CAMELS/IllustrisTNG/L50n512_SB35/SB35_919/data/ionized_gas_717_yz_2Dmap.npy' not found. Please compute it first.
+Computing the map instead...
+Saving field instead of map, since beamSize is None.
+Number of halos selected: 300 at Mass threshold:  5.49e+13 ~  6.86e+11 Msun/h
+Box size: 50000.0 kpc/h , Map size at z=0.4669873650209315: 143.35 arcmin
+Data file '/pscratch/sd/l/lindajin/CAMELS/IllustrisTNG/L50n512_SB35/SB35_919/data/total_717_yz_2Dmap.npy' not found. Please compute it first.
+Computing the map instead...
+Saving field instead of map, since beamSize is None.
+Number of halos selected: 300 at Mass threshold:  5.49e+13 ~  6.86e+11 Msun/h
+  [rank 10] Done. Elapsed: 27.0 s
+Box size: 50000.0 kpc/h , Map size at z=0.4674218694859129: 141.62 arcmin
+Data file '/pscratch/sd/l/lindajin/CAMELS/IllustrisTNG/L50n512_SB35/SB35_476/data/ionized_gas_709_yz_2Dmap.npy' not found. Please compute it first.
+Computing the map instead...
+Saving field instead of map, since beamSize is None.
+Number of halos selected: 300 at Mass threshold:  1.41e+14 ~  9.91e+11 Msun/h
+Box size: 50000.0 kpc/h , Map size at z=0.4674218694859129: 141.62 arcmin
+Data file '/pscratch/sd/l/lindajin/CAMELS/IllustrisTNG/L50n512_SB35/SB35_476/data/total_709_yz_2Dmap.npy' not found. Please compute it first.
+Computing the map instead...
+Saving field instead of map, since beamSize is None.
+Number of halos selected: 300 at Mass threshold:  1.41e+14 ~  9.91e+11 Msun/h
+  [rank 6] Done. Elapsed: 20.1 s
+Config: /pscratch/sd/l/lindajin/SimulationStacker/scripts/configs/mass_ratio_data_z05.yaml
+  [rank 7] Processing L50n512_SB35[54] (snapshot 74)
+Box size: 50000.0 kpc/h , Map size at z=0.4669873650209315: 128.85 arcmin
+Data file '/pscratch/sd/l/lindajin/CAMELS/IllustrisTNG/L50n512_SB35/SB35_54/data/ionized_gas_645_yz_2Dmap.npy' not found. Please compute it first.
+Computing the map instead...
+Saving field instead of map, since beamSize is None.
+Number of halos selected: 300 at Mass threshold:  4.81e+13 ~  8.53e+10 Msun/h
+Box size: 50000.0 kpc/h , Map size at z=0.4669873650209315: 128.85 arcmin
+Data file '/pscratch/sd/l/lindajin/CAMELS/IllustrisTNG/L50n512_SB35/SB35_54/data/total_645_yz_2Dmap.npy' not found. Please compute it first.
+Computing the map instead...
+Saving field instead of map, since beamSize is None.
+Number of halos selected: 300 at Mass threshold:  4.81e+13 ~  8.53e+10 Msun/h
+  [rank 7] Processing L50n512_SB35[407] (snapshot 74)
+Box size: 50000.0 kpc/h , Map size at z=0.46756446930371487: 143.25 arcmin
+Data file '/pscratch/sd/l/lindajin/CAMELS/IllustrisTNG/L50n512_SB35/SB35_407/data/ionized_gas_717_yz_2Dmap.npy' not found. Please compute it first.
+Computing the map instead...
+Saving field instead of map, since beamSize is None.
+Number of halos selected: 300 at Mass threshold:  4.21e+13 ~  7.00e+11 Msun/h
+Box size: 50000.0 kpc/h , Map size at z=0.46756446930371487: 143.25 arcmin
+Data file '/pscratch/sd/l/lindajin/CAMELS/IllustrisTNG/L50n512_SB35/SB35_407/data/total_717_yz_2Dmap.npy' not found. Please compute it first.
+Computing the map instead...
+Saving field instead of map, since beamSize is None.
+Number of halos selected: 300 at Mass threshold:  4.21e+13 ~  7.00e+11 Msun/h
+  [rank 7] Done. Elapsed: 20.1 s
+Config: /pscratch/sd/l/lindajin/SimulationStacker/scripts/configs/mass_ratio_data_z05.yaml
+  [rank 0] Processing L50n512_SB35[228] (snapshot 74)
+Box size: 50000.0 kpc/h , Map size at z=0.4674218694859129: 140.00 arcmin
+Data file '/pscratch/sd/l/lindajin/CAMELS/IllustrisTNG/L50n512_SB35/SB35_228/data/ionized_gas_700_yz_2Dmap.npy' not found. Please compute it first.
+Computing the map instead...
+Saving field instead of map, since beamSize is None.
+Number of halos selected: 300 at Mass threshold:  2.10e+14 ~  4.04e+11 Msun/h
+Box size: 50000.0 kpc/h , Map size at z=0.4674218694859129: 140.00 arcmin
+Data file '/pscratch/sd/l/lindajin/CAMELS/IllustrisTNG/L50n512_SB35/SB35_228/data/total_700_yz_2Dmap.npy' not found. Please compute it first.
+Computing the map instead...
+Saving field instead of map, since beamSize is None.
+Number of halos selected: 300 at Mass threshold:  2.10e+14 ~  4.04e+11 Msun/h
+  [rank 0] Processing L50n512_SB35[51] (snapshot 74)
+Box size: 50000.0 kpc/h , Map size at z=0.4669873650209315: 140.82 arcmin
+Data file '/pscratch/sd/l/lindajin/CAMELS/IllustrisTNG/L50n512_SB35/SB35_51/data/ionized_gas_705_yz_2Dmap.npy' not found. Please compute it first.
+Computing the map instead...
+Saving field instead of map, since beamSize is None.
+Number of halos selected: 300 at Mass threshold:  1.05e+14 ~  5.08e+11 Msun/h
+Box size: 50000.0 kpc/h , Map size at z=0.4669873650209315: 140.82 arcmin
+Data file '/pscratch/sd/l/lindajin/CAMELS/IllustrisTNG/L50n512_SB35/SB35_51/data/total_705_yz_2Dmap.npy' not found. Please compute it first.
+Computing the map instead...
+Saving field instead of map, since beamSize is None.
+Number of halos selected: 300 at Mass threshold:  1.05e+14 ~  5.08e+11 Msun/h
+Plotting L50n512_SB35[228]
+Plotting L50n512_SB35[51]
+Plotting L50n512_SB35[563]
+Plotting L50n512_SB35[501]
+Plotting L50n512_SB35[457]
+Plotting L50n512_SB35[285]
+Plotting L50n512_SB35[209]
+Plotting L50n512_SB35[178]
+Plotting L50n512_SB35[864]
+Plotting L50n512_SB35[65]
+Plotting L50n512_SB35[61]
+Plotting L50n512_SB35[191]
+Plotting L50n512_SB35[447]
+Plotting L50n512_SB35[476]
+Plotting L50n512_SB35[54]
+Plotting L50n512_SB35[407]
+Plotting L50n512_SB35[859]
+Plotting L50n512_SB35[451]
+Plotting L50n512_SB35[919]
+Plotting L50n512_SB35[569]
+Saving figure to /pscratch/sd/l/lindajin/SimulationStacker/figures/2026-03/03-31/CAMELS_L50n512_SB35_n20s42_ionized_gas-DSigma_total-DSigma_halos_yz_data_SPk10_z0.47.pdf
+Done. Elapsed: 24.8 s
+Job completed at: Tue Mar 31 09:34:07 PM PDT 2026

@@ -1,0 +1,16 @@
+config: !!python/object:__main__.ModelConfig
+  condition_on_nd: true
+  dropout_rate: 0.2
+  hidden_dims:
+  - 256
+  - 256
+  - 256
+  n_cosmo_params: 0
+  n_power_bins: 118
+  n_radial_bins: 29
+  n_spatial_positions: 2
+  use_batch_norm: true
+  use_residual: true
+lr: 0.001
+n_models: 5
+weight_decay: 1.0e-05
