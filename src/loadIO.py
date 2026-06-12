@@ -282,8 +282,8 @@ def load_subset(snap_file, p_type, sim_type='IllustrisTNG', header=None, keys=No
     return particles
 
 
-def _get_data_filepath(sim_type, sim_index, p_type, n_pixels,
-                       projection='xy', data_type='field', dim='2D',
+def _get_data_filepath(sim_type, sim_index, p_type, n_pixels, 
+                       snapshot=74, projection='xy', data_type='field', dim='2D',
                        mask=False, maskRad=2.0, base_path=None, file_type='npy'):
     """Generate the file path for saving/loading data.
 
@@ -318,9 +318,9 @@ def _get_data_filepath(sim_type, sim_index, p_type, n_pixels,
     # Build filename
     if sim_type == 'IllustrisTNG':
         if dim == '2D':
-            filename = f'{p_type}_{n_pixels}_{projection}{suffix}.{file_type}'
+            filename = f'{p_type}_{n_pixels}_{projection}{suffix}_snap{snapshot}.{file_type}'
         else:  # 3D
-            filename = f'{p_type}_{n_pixels}{suffix}.{file_type}'
+            filename = f'{p_type}_{n_pixels}{suffix}_snap{snapshot}.{file_type}'
     else:
         raise ValueError(f"Unknown sim_type: {sim_type}")
     
@@ -331,7 +331,7 @@ def _get_data_filepath(sim_type, sim_index, p_type, n_pixels,
     return dir_path / filename
 
 
-def load_data(sim_type, sim_index, p_type, n_pixels, 
+def load_data(sim_type, sim_index, p_type, n_pixels, snapshot=74,
               projection='xy', data_type='field', dim='2D', 
               mask=False, maskRad=2.0,
               base_path=None):
@@ -352,7 +352,7 @@ def load_data(sim_type, sim_index, p_type, n_pixels,
     Returns:
         np.ndarray: 2D numpy array of the field or map.
     """
-    filepath = _get_data_filepath(sim_type, sim_index, p_type, n_pixels,
+    filepath = _get_data_filepath(sim_type, sim_index, p_type, n_pixels, snapshot,
                                    projection, data_type, dim, mask, maskRad, base_path)
     
     try:
@@ -363,7 +363,7 @@ def load_data(sim_type, sim_index, p_type, n_pixels,
     return data
 
 
-def save_data(data, sim_type, sim_index, p_type, n_pixels, 
+def save_data(data, sim_type, sim_index, p_type, n_pixels, snapshot=74,
               projection='xy', data_type='field', dim='2D',
               mask=False, maskRad=2.0,
               base_path=None, mkdir=True, file_type='npy'):
@@ -385,7 +385,7 @@ def save_data(data, sim_type, sim_index, p_type, n_pixels,
     Returns:
         None
     """
-    filepath = _get_data_filepath(sim_type, sim_index, p_type, n_pixels,
+    filepath = _get_data_filepath(sim_type, sim_index, p_type, n_pixels, snapshot,
                                    projection, data_type, dim, mask, maskRad, base_path, file_type)
     
     if mkdir:

@@ -142,14 +142,14 @@ class SimulationStacker(object):
             haloes['GroupRad'] = haloes['GroupRad'][halo_mask] * maskRad # in kpc/h
             haloes['GroupPos'] = haloes['GroupPos'][halo_mask]
 
-            field = create_masked_field(self, halo_cat=haloes, pType=pType, nPixels=nPixels, projection=projection,
+            field = create_masked_field(self, halo_cat=haloes, pType=pType, nPixels=nPixels, snapshot=self.snapshot, projection=projection,
                                         save3D=True, load3D=load, base_path=base_path, dim=dim) # TODO: make save3D and load3D configurable
         else:
             field = create_field(self, pType, nPixels, projection, dim=dim, load=load)
         
         if save:
             # TODO: Handle saving and loading of the fields for the masked case.
-            save_data(field, self.simType, self.sim_index, pType, nPixels, 
+            save_data(field, self.simType, self.sim_index, pType, nPixels, self.snapshot,
                       projection, 'field', mask=mask, maskRad=maskRad, base_path=base_path, dim=dim)
 
         return field
@@ -220,7 +220,7 @@ class SimulationStacker(object):
             map_ = fft_smoothed_map(map_, beamSize, pixel_size_arcmin=arcminPerPixel)
 
         if save:
-            save_data(map_, self.simType, self.sim_index, pType, nPixels, 
+            save_data(map_, self.simType, self.sim_index, pType, nPixels, self.snapshot,
                       projection, 'map', mask=mask, maskRad=maskRad, base_path=base_path)
 
 
@@ -818,7 +818,7 @@ class SimulationStacker(object):
         if save:
             print('Saving Baryon Suppression Field...')
             # Save as NPZ using common utility; ensure dim key uses '3D'
-            save_data(results, self.simType, self.sim_index, 'Pk', grid,
+            save_data(results, self.simType, self.sim_index, 'Pk', grid, self.snapshot,
                        data_type='field', dim='3D', file_type='npz')
         else:
             return results

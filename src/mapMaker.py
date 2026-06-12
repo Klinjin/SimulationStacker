@@ -678,7 +678,7 @@ def make_combined_field(stacker, pType, nPixels=None, projection='xy', dim='2D',
 
     return total_field
 
-def create_masked_field(stacker, pType, nPixels, halo_cat, projection='xy', 
+def create_masked_field(stacker, pType, nPixels, halo_cat, snapshot=74, projection='xy', 
                         save3D=False, load3D=False, base_path=None, dim='2D'):
     """Create a masked field, where objects outside of n radii of the halo catalogue
     is masked out.
@@ -722,7 +722,7 @@ def create_masked_field(stacker, pType, nPixels, halo_cat, projection='xy',
 
 
     if save3D:
-        save_data(field_3D, stacker.simType, stacker.sim_index, pType, nPixels, 
+        save_data(field_3D, stacker.simType, stacker.sim_index, pType, nPixels, snapshot,
                   projection, 'field', mask=False, maskRad=3.0, base_path=base_path, dim='3D')
 
     # sz_types = ['tSZ', 'kSZ', 'tau']
