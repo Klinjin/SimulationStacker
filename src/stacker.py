@@ -277,7 +277,7 @@ class SimulationStacker(object):
 
     def stackMap(self, pType, filterType='cumulative', minRadius=0.5, maxRadius=6.0, numRadii=11,
                  z=None, projection='xy', save=False, load=True, radDistance=1.0, pixelSize=0.5, beamSize=1.6,
-                 halo_number_density=2.4e-3, halo_mass_upper=None, mask=False, maskRad=3.0,
+                 halo_number_density=2.4e-3, halo_mass_upper=None, mask=False, maskRad=3.0, radDistanceUnits='arcmin',
                  subtract_mean=False):
         """Stack the map of a given particle type.
 
@@ -298,6 +298,7 @@ class SimulationStacker(object):
             mask (bool, optional): If True, masks out areas outside of haloes in the map. Defaults to False.
             maskRad (float, optional): Number of virial radii around each halo to keep unmasked. Only used if mask=True.
                 Defaults to 3x virial radii.
+            radDistanceUnits (str, optional): Units for the radial distance. Defaults to 'arcmin'.
             subtract_mean (bool, optional): If True, subtracts the mean of the map before stacking. Defaults to False.
             halo_mass_upper (float, optional): Upper mass bound for selecting halos. Defaults to 5*10**(14).
 
@@ -329,7 +330,7 @@ class SimulationStacker(object):
             numRadii=numRadii,
             projection=projection,
             radDistance=radDistance,
-            radDistanceUnits='arcmin',
+            radDistanceUnits=radDistanceUnits,
             halo_number_density=halo_number_density,
             pixelSize=pixelSize
         )
@@ -346,7 +347,7 @@ class SimulationStacker(object):
             v_c = 300000 / 299792458 # velocity over speed of light.
             pixArea = (pixelSize**2) # Convert to arcmin^2 units
             # factor = 1
-            profiles = profiles * T_CMB * 1e6 * v_c * pixArea # Convert to micro-Kelvin, the units for kSZ in data.
+            profiles = profiles * T_CMB * 1e6 * v_c * pixArea # Convert to micro-Kelvin * arcmin^2, the units for kSZ in data.
         elif pType == 'kSZ':
             # TODO: kSZ unit conversion
             pixArea = (pixelSize**2) # Convert to arcmin^2 units
@@ -482,6 +483,7 @@ class SimulationStacker(object):
 
         halo_mask = select_abundance_halos_mask(subhaloStellarMass, self.header['BoxSize'], halo_number_density, halo_mass_upper)
         self.halo_mass_selected = haloMass[halo_mask]  # Store for reference
+        self.stellar_mass_selected = subhaloStellarMass[halo_mask]  # Store for reference
 
         print(f'Number of halos selected: {halo_mask.shape[0]} at Mass threshold: {self.halo_mass_selected[0]: .2e} ~ {self.halo_mass_selected[-1]: .2e} Msun/h')
 
@@ -526,13 +528,12 @@ class SimulationStacker(object):
             # Linear bins from r_min to r_max (kSZ interest)
             radii_linear = np.linspace(minRadius, maxRadius, numRadii)
             # Log bins from r_max to 20 1000*kpc/h (lensing interest) Motivated by MacCarthy 2025
-            radii_log = np.logspace(np.log10(maxRadius), np.log10(20), numRadii)
-            # Concatenate, removing duplicate at r_split
+            radii_log = np.logspace(np.log10(maxRadius), np.log10(20), numRadii+1)
             radii = np.concatenate([radii_linear, radii_log[1:]])
         else:  # arcmin units
             radii_linear = np.linspace(minRadius, maxRadius, numRadii) # in radDistance units 
             theta_max = comoving_to_arcmin(20*1000, self.z, cosmo=self.cosmo)
-            radii_log = np.logspace(np.log10(maxRadius), np.log10(theta_max), numRadii)
+            radii_log = np.logspace(np.log10(maxRadius), np.log10(theta_max), numRadii+1)
             radii = np.concatenate([radii_linear, radii_log[1:]])
 
 
