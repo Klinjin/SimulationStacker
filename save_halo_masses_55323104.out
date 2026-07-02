@@ -1,0 +1,94 @@
+Start time: Tue Jun 30 01:14:23 PM PDT 2026
+
+============================================================
+snap74  |  number_density=0.0024  |  expected n_halos=300
+============================================================
+  sim    0 done  (1 ok, 0s elapsed, ETA 260s)
+  sim  200 done  (201 ok, 44s elapsed, ETA 180s)
+  sim  400 done  (401 ok, 88s elapsed, ETA 136s)
+  sim  600 done  (601 ok, 132s elapsed, ETA 93s)
+  sim  800 done  (801 ok, 176s elapsed, ETA 49s)
+  sim 1000 done  (1001 ok, 221s elapsed, ETA 5s)
+
+snap74: 1024/1024 sims loaded in 225.9s
+Saved → /pscratch/sd/l/lindajin/DH_profile_kSZ_WL/data/halo_masses_4types_snap74.npz  shape=(4, 1024, 300)
+
+============================================================
+snap82  |  number_density=0.03  |  expected n_halos=3750
+============================================================
+  sim    0 done  (1 ok, 0s elapsed, ETA 244s)
+  sim    9: WARNING selected 3432 instead of 3750
+  sim   41: WARNING selected 2145 instead of 3750
+  sim   54: WARNING selected 2023 instead of 3750
+  sim   57: WARNING selected 2144 instead of 3750
+  sim   70: WARNING selected 3160 instead of 3750
+  sim   73: WARNING selected 2042 instead of 3750
+  sim   89: WARNING selected 2107 instead of 3750
+  sim  118: WARNING selected 1843 instead of 3750
+  sim  145: WARNING selected 1814 instead of 3750
+  sim  169: WARNING selected 3174 instead of 3750
+  sim  182: WARNING selected 2083 instead of 3750
+  sim  185: WARNING selected 2756 instead of 3750
+  sim  200 done  (201 ok, 44s elapsed, ETA 180s)
+  sim  201: WARNING selected 1464 instead of 3750
+  sim  213: WARNING selected 3045 instead of 3750
+  sim  217: WARNING selected 3190 instead of 3750
+  sim  241: WARNING selected 2753 instead of 3750
+  sim  265: WARNING selected 1764 instead of 3750
+  sim  273: WARNING selected 3183 instead of 3750
+  sim  289: WARNING selected 3520 instead of 3750
+  sim  310: WARNING selected 3386 instead of 3750
+  sim  313: WARNING selected 2647 instead of 3750
+  sim  330: WARNING selected 3489 instead of 3750
+  sim  342: WARNING selected 1720 instead of 3750
+  sim  366: WARNING selected 3536 instead of 3750
+  sim  393: WARNING selected 2979 instead of 3750
+  sim  395: WARNING selected 3677 instead of 3750
+  sim  400 done  (401 ok, 87s elapsed, ETA 136s)
+  sim  425: WARNING selected 1566 instead of 3750
+  sim  438: WARNING selected 3170 instead of 3750
+  sim  441: WARNING selected 2719 instead of 3750
+  sim  454: WARNING selected 3721 instead of 3750
+  sim  457: WARNING selected 1819 instead of 3750
+  sim  470: WARNING selected 3022 instead of 3750
+  sim  505: WARNING selected 2794 instead of 3750
+  sim  526: WARNING selected 3387 instead of 3750
+  sim  529: WARNING selected 2705 instead of 3750
+  sim  566: WARNING selected 3439 instead of 3750
+  sim  585: WARNING selected 2076 instead of 3750
+  sim  598: WARNING selected 1552 instead of 3750
+  sim  600 done  (601 ok, 132s elapsed, ETA 93s)
+  sim  649: WARNING selected 3188 instead of 3750
+  sim  678: WARNING selected 1569 instead of 3750
+  sim  681: WARNING selected 2708 instead of 3750
+  sim  694: WARNING selected 3728 instead of 3750
+  sim  713: WARNING selected 2413 instead of 3750
+  sim  726: WARNING selected 2734 instead of 3750
+  sim  729: WARNING selected 3447 instead of 3750
+  sim  758: WARNING selected 2804 instead of 3750
+  sim  761: WARNING selected 3601 instead of 3750
+  sim  769: WARNING selected 3033 instead of 3750
+  sim  800 done  (801 ok, 178s elapsed, ETA 50s)
+  sim  805: WARNING selected 2602 instead of 3750
+  sim  809: WARNING selected 972 instead of 3750
+  sim  822: WARNING selected 3474 instead of 3750
+  sim  825: WARNING selected 2203 instead of 3750
+  sim  841: WARNING selected 1635 instead of 3750
+  sim  854: WARNING selected 3413 instead of 3750
+  sim  865: WARNING selected 3621 instead of 3750
+  sim  873: WARNING selected 3545 instead of 3750
+  sim  881: WARNING selected 2125 instead of 3750
+  sim  909: WARNING selected 2721 instead of 3750
+  sim  937: WARNING selected 1585 instead of 3750
+  sim  969: WARNING selected 2925 instead of 3750
+  sim  981: WARNING selected 3454 instead of 3750
+  sim  985: WARNING selected 2214 instead of 3750
+  sim 1000 done  (1001 ok, 223s elapsed, ETA 5s)
+  sim 1009: WARNING selected 3071 instead of 3750
+
+snap82: 1024/1024 sims loaded in 228.5s
+Saved → /pscratch/sd/l/lindajin/DH_profile_kSZ_WL/data/halo_masses_4types_snap82.npz  shape=(4, 1024, 3750)
+
+Total wall time: 454.6s
+End time: Tue Jun 30 01:22:00 PM PDT 2026
+Elapsed: 00:07:37

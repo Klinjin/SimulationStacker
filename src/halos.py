@@ -65,36 +65,33 @@ def select_abundance_halos_mask(halo_masses, Boxsize, number_density, upper_mass
     """
 
     halo_masses = np.asarray(halo_masses)
-    
-    # Apply upper mass bound filter
+
     if upper_mass_bound is not None:
         valid_mask = halo_masses <= upper_mass_bound
-        filtered = halo_masses[valid_mask]
-        valid_indices = np.where(valid_mask)[0]
     else:
-        filtered = halo_masses
-        valid_indices = np.arange(len(halo_masses))
+        valid_mask = np.ones(len(halo_masses), dtype=bool)
+
+    filtered = halo_masses[valid_mask]
+    valid_indices = np.where(valid_mask)[0]
 
     # Calculate mass threshold based on number density
     target_count = int(number_density * (Boxsize/1e3)**3)
     target_count = min(target_count, len(filtered))
-    
-    if target_count == 0:
-        # Return empty indices and empty masses for consistency
-        return np.array([], dtype=int), np.array([], dtype=halo_masses.dtype)
-    
-    # Find mass threshold
-    mass_threshold = np.partition(filtered, -target_count)[-target_count]
-    
-    # Select halos above mass threshold
-    mass_condition = filtered >= mass_threshold
 
-    
-    return valid_indices[mass_condition]
+    if target_count == 0:
+        return np.array([], dtype=int)
+
+    # argsort descending, take top target_count exactly.
+    # np.partition + threshold would select all ties at the boundary mass —
+    # in CAMELS-TNG many centrals share the minimum stellar mass (1 star
+    # particle), so the threshold can sweep in the entire catalog instead of
+    # the intended N halos.
+    top_idx = np.argsort(filtered)[::-1][:target_count]
+    return valid_indices[top_idx]
 
 
 def select_abundance_subhalos(halo_masses, target_number, Lbox):
-    """Select subhalos by abundance matching to a tar
+    """Select subhalos by abundance matching to a target number density.
 
     Sorts subhalos by the provided mass proxy in descending order and
     selects the top N such that N / box_volume matches the target number

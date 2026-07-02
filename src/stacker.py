@@ -137,7 +137,7 @@ class SimulationStacker(object):
             haloMass = haloes['GroupMass']
             StellarMass = haloes['SubhaloMStar']
             
-            halo_mask = select_abundance_halos_mask(StellarMass, self.header['BoxSize'], upper_mass_bound=10**(13.22), number_density=5e14) # TODO: make this configurable from user input
+            halo_mask = select_abundance_halos_mask(StellarMass, self.header['BoxSize'], number_density=5e-4) # TODO: make this configurable from user input
             haloes['GroupMass'] = haloes['GroupMass'][halo_mask]
             haloes['GroupRad'] = haloes['GroupRad'][halo_mask] * maskRad # in kpc/h
             haloes['GroupPos'] = haloes['GroupPos'][halo_mask]
@@ -154,7 +154,7 @@ class SimulationStacker(object):
 
         return field
 
-    def makeMap(self, pType, projection='xy', beamSize=1.6, save=False, load=True, 
+    def makeMap(self, pType, projection='xy', beamSize=1.6, save=False, load=True, nPixels=None,
                 pixelSize=0.5, mask=False, maskRad=3.0, base_path=None):
         """Make a 2D map convolved with a beam for a given particle type.
         This is more realistic than makeField
@@ -177,14 +177,16 @@ class SimulationStacker(object):
         Returns:
             np.ndarray: 2D numpy array of the map for the given particle type.
         """        
-            
-        # Use stored cosmology
-        # Get the box size in angular units.
-        theta_arcmin = comoving_to_arcmin(self.header['BoxSize'], self.z, cosmo=self.cosmo)
-        print(f"Box size: {self.header['BoxSize']} kpc/h , Map size at z={self.z}: {theta_arcmin:.2f} arcmin")
-
-        # Round up to the nearest integer, pixel size is 0.5 arcmin as in ACT
-        nPixels = np.ceil(theta_arcmin / pixelSize).astype(int)
+        if nPixels is None:
+            # Use stored cosmology
+            # Get the box size in angular units.
+            theta_arcmin = comoving_to_arcmin(self.header['BoxSize'], self.z, cosmo=self.cosmo)
+            print(f"Calculting nPixels from pixelSize {pixelSize}'-- Box size: {self.header['BoxSize']} kpc/h , Map size at z={self.z}: {theta_arcmin:.2f} arcmin")
+            # Round up to the nearest integer, pixel size is 0.5 arcmin as in ACT
+            nPixels = np.ceil(theta_arcmin / pixelSize).astype(int)
+        else:
+            print(f"Using provided nPixels {nPixels}, disregarding pixelSize {pixelSize}'. ")
+        
         arcminPerPixel = theta_arcmin / nPixels  # Arcminutes per pixel, this is the true pixelSize after rounding.
         self.nPixels_map  = nPixels  # Store the nPixels used for the map in the instance
         # beamsize_pixel = beamsize / arcminPerPixel  # Convert arcminutes to pixels
@@ -485,7 +487,7 @@ class SimulationStacker(object):
         self.halo_mass_selected = haloMass[halo_mask]  # Store for reference
         self.stellar_mass_selected = subhaloStellarMass[halo_mask]  # Store for reference
 
-        print(f'Number of halos selected: {halo_mask.shape[0]} at Mass threshold: {self.halo_mass_selected[0]: .2e} ~ {self.halo_mass_selected[-1]: .2e} Msun/h')
+        print(f'Number of halos selected: {halo_mask.shape[0]} at Mass: {self.halo_mass_selected[0]: .2e} ~ {self.halo_mass_selected[-1]: .2e} Msun/h, Stellar threshold: {self.stellar_mass_selected[0]: .2e} ~ {self.stellar_mass_selected[-1]: .2e} Msun/h')
 
         # Convert radDistance to pixels based on units
         if radDistanceUnits == 'kpc/h':
